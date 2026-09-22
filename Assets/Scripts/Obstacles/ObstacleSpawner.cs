@@ -285,9 +285,8 @@ namespace EndlessRunner.Obstacles
             trigger.isTrigger = true;
             trigger.size = new Vector3(1f, 1f, 0.5f);
 
-            // Tag as Obstacle
-            try { obj.tag = "Obstacle"; }
-            catch { /* Tag may not exist yet */ }
+            // Set layer to Obstacle (if it exists) or Default
+            obj.layer = LayerMask.NameToLayer("Obstacle") >= 0 ? LayerMask.NameToLayer("Obstacle") : 0;
 
             // Add Rigidbody for trigger detection (kinematic)
             Rigidbody rb = obj.AddComponent<Rigidbody>();
@@ -357,7 +356,7 @@ namespace EndlessRunner.Obstacles
             }
 
             // Grab from existing renderer
-            Renderer existing = FindFirstObjectByType<Renderer>();
+            Renderer existing = FindAnyObjectByType<Renderer>();
             if (existing != null && existing.sharedMaterial != null)
                 cachedShader = existing.sharedMaterial.shader;
 

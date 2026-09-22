@@ -73,3 +73,16 @@ ExportedObj/
 # OS
 .DS_Store
 Thumbs.db
+
+# MediaPipe — large test/resource files (re-downloadable)
+Packages/com.github.homuler.mediapipe/Tests/
+Assets/StreamingAssets/MediaPipe/*.bytes
+
+# Third-party Asset Store packages (licensed, do NOT redistribute)
+Assets/Versatile Studio Assets/
+Assets/Versatile Studio Assets.meta
+
+# Mixamo character assets (re-downloadable from mixamo.com)
+Assets/Art/Character/*.fbx
+Assets/Art/Character/*.fbx.meta
+Assets/Art/Character/Textures_and_Materials/

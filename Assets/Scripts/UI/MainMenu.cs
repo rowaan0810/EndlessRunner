@@ -55,10 +55,10 @@ namespace EndlessRunner.UI
             }
 
             // Reset player
-            var player = FindFirstObjectByType<PlayerController>();
+            var player = FindAnyObjectByType<PlayerController>();
             if (player != null) player.ResetPlayer();
 
-            var collision = FindFirstObjectByType<PlayerCollision>();
+            var collision = FindAnyObjectByType<PlayerCollision>();
             if (collision != null) collision.ResetCollision();
 
             // Start
@@ -123,7 +123,7 @@ namespace EndlessRunner.UI
 
         private void CreateMenuUI()
         {
-            Canvas canvas = FindFirstObjectByType<Canvas>();
+            Canvas canvas = FindAnyObjectByType<Canvas>();
             if (canvas == null)
             {
                 GameObject canvasObj = new GameObject("UICanvas");

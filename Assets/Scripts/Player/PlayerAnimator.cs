@@ -6,59 +6,34 @@ using UnityEngine;
 namespace EndlessRunner.Player
 {
     /// <summary>
-    /// Manages player visual states based on the PlayerController's current state.
-    /// In Week 1 this does simple visual changes (scale, color).
-    /// In Week 5 this will drive a proper Animator controller with Mixamo animations.
+    /// Manages player animations by feeding PlayerController state to the Animator.
     /// </summary>
+    [RequireComponent(typeof(Animator))]
     public class PlayerAnimator : MonoBehaviour
     {
         [Header("References")]
         [SerializeField] private PlayerController playerController;
-        [SerializeField] private MeshRenderer meshRenderer;
+        
+        private Animator animator;
 
-        [Header("Visual Feedback Colors")]
-        [SerializeField] private Color runColor = new Color(0.2f, 0.8f, 0.3f);    // Green while running
-        [SerializeField] private Color jumpColor = new Color(0.3f, 0.6f, 1.0f);   // Blue while jumping
-        [SerializeField] private Color duckColor = new Color(1.0f, 0.8f, 0.2f);   // Yellow while ducking
-        [SerializeField] private Color fallColor = new Color(0.9f, 0.4f, 0.3f);   // Red while falling
+        // Animator hash parameters for performance
+        private readonly int isGroundedHash = Animator.StringToHash("isGrounded");
+        private readonly int isDuckingHash = Animator.StringToHash("isDucking");
 
-        private Material playerMaterial;
-
-        private void Start()
+        private void Awake()
         {
-            if (meshRenderer != null)
-            {
-                // Create instance material so we don't modify the shared one
-                playerMaterial = new Material(meshRenderer.material);
-                meshRenderer.material = playerMaterial;
-                playerMaterial.color = runColor;
-            }
+            animator = GetComponent<Animator>();
+            if (playerController == null)
+                playerController = GetComponentInParent<PlayerController>();
         }
 
         private void Update()
         {
-            if (playerController == null || playerMaterial == null) return;
+            if (playerController == null || animator == null) return;
 
-            // Update color based on state (placeholder for proper animation)
-            Color targetColor;
-
-            if (playerController.IsDucking)
-                targetColor = duckColor;
-            else if (playerController.IsJumping)
-                targetColor = jumpColor;
-            else if (playerController.IsFalling)
-                targetColor = fallColor;
-            else
-                targetColor = runColor;
-
-            playerMaterial.color = Color.Lerp(playerMaterial.color, targetColor, Time.deltaTime * 10f);
-        }
-
-        private void OnDestroy()
-        {
-            // Clean up instance material
-            if (playerMaterial != null)
-                Destroy(playerMaterial);
+            // Feed the controller state to the animation state machine
+            animator.SetBool(isGroundedHash, playerController.IsGrounded);
+            animator.SetBool(isDuckingHash, playerController.IsDucking);
         }
     }
 }

@@ -62,11 +62,11 @@ namespace EndlessRunner.UI
         private void DoRestart()
         {
             // Reset player
-            var player = FindFirstObjectByType<PlayerController>();
+            var player = FindAnyObjectByType<PlayerController>();
             if (player != null) player.ResetPlayer();
 
             // Reset collision state
-            var collision = FindFirstObjectByType<PlayerCollision>();
+            var collision = FindAnyObjectByType<PlayerCollision>();
             if (collision != null) collision.ResetCollision();
 
             GameManager.Instance?.RestartGame();
@@ -77,13 +77,13 @@ namespace EndlessRunner.UI
             Hide();
             GameManager.Instance?.ReturnToMenu();
             // Show main menu (if it exists)
-            var mainMenu = FindFirstObjectByType<MainMenu>();
+            var mainMenu = FindAnyObjectByType<MainMenu>();
             if (mainMenu != null) mainMenu.ShowMenu();
         }
 
         private void CreateGameOverUI()
         {
-            Canvas canvas = FindFirstObjectByType<Canvas>();
+            Canvas canvas = FindAnyObjectByType<Canvas>();
             if (canvas == null) return;
 
             // Semi-transparent overlay panel

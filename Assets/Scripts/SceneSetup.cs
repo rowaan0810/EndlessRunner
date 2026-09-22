@@ -8,6 +8,7 @@ using EndlessRunner.Input;
 using EndlessRunner.Player;
 using EndlessRunner.Track;
 using EndlessRunner.Obstacles;
+using EndlessRunner.Input.PoseDetection;
 using EndlessRunner.UI;
 
 namespace EndlessRunner
@@ -50,7 +51,7 @@ namespace EndlessRunner
                     return s;
             }
 
-            Renderer existingRenderer = FindFirstObjectByType<Renderer>();
+            Renderer existingRenderer = FindAnyObjectByType<Renderer>();
             if (existingRenderer != null && existingRenderer.sharedMaterial != null)
                 return existingRenderer.sharedMaterial.shader;
 
@@ -79,28 +80,85 @@ namespace EndlessRunner
             GameSpeed gs = EnsureComponent<GameSpeed>(managers);
             InputManager im = EnsureComponent<InputManager>(managers);
             KeyboardInput ki = EnsureComponent<KeyboardInput>(managers);
+            PoseInput pi = EnsureComponent<PoseInput>(managers);
+            EasyModeInput emi = EnsureComponent<EasyModeInput>(managers);
 
             SetPrivateField(im, "keyboardInput", ki);
+            SetPrivateField(im, "poseInput", pi);
+            SetPrivateField(im, "easyModeInput", emi);
+
+            // --- MediaPipe Pose Detection ---
+            GameObject poseDetector = CreateOrFind("PoseDetector");
+            EnsureComponent<MediaPipeManager>(poseDetector);
 
             // --- Player ---
-            GameObject player = CreateOrFind("Player");
-            player.transform.position = new Vector3(0f, 0.5f, 0f);
+            GameObject player = GameObject.Find("Player");
+            if (player == null) player = new GameObject("Player");
+            player.name = "Player";
+            player.transform.position = new Vector3(0f, 0f, 0f); // Pivot at feet (ground level)
             try { player.tag = "Player"; } catch { }
 
-            MeshFilter mf = EnsureComponent<MeshFilter>(player);
-            MeshRenderer mr = EnsureComponent<MeshRenderer>(player);
+            bool hasCharacterModel = false;
+#if UNITY_EDITOR
+            GameObject davidModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Character/Ch28_nonPBR.fbx");
+            UnityEditor.Animations.AnimatorController controller = UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEditor.Animations.AnimatorController>("Assets/Art/Character/PlayerAnimController.controller");
+            
+            if (davidModel != null && controller != null)
+            {
+                hasCharacterModel = true;
+                
+                // Remove capsule mesh if it exists
+                MeshFilter mf = player.GetComponent<MeshFilter>();
+                MeshRenderer mr = player.GetComponent<MeshRenderer>();
+                if (mf != null) DestroyImmediate(mf);
+                if (mr != null) DestroyImmediate(mr);
 
-            GameObject tempCapsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            mf.sharedMesh = tempCapsule.GetComponent<MeshFilter>().sharedMesh;
-            DestroyImmediate(tempCapsule);
+                if (player.transform.Find("Ch28_nonPBR") == null)
+                {
+                    GameObject model = UnityEditor.PrefabUtility.InstantiatePrefab(davidModel, player.transform) as GameObject;
+                    model.name = "Ch28_nonPBR";
+                    model.transform.localPosition = Vector3.zero; // Pivot is already at feet
+                    
+                    // Fix material shader for URP (so it's not colorless/white)
+                    Renderer[] renderers = model.GetComponentsInChildren<Renderer>();
+                    Shader urpShader = FindWorkingShader();
+                    foreach (var rnd in renderers)
+                    {
+                        foreach (var mat in rnd.materials)
+                        {
+                            if (mat != null) mat.shader = urpShader;
+                        }
+                    }
 
-            mr.material = CreateMaterial(new Color(0.2f, 0.85f, 0.4f));
+                    Animator anim = EnsureComponent<Animator>(player);
+                    Animator modelAnim = model.GetComponent<Animator>();
+                    if (modelAnim != null)
+                    {
+                        anim.avatar = modelAnim.avatar;
+                        DestroyImmediate(modelAnim);
+                    }
+                    anim.runtimeAnimatorController = controller;
+                }
+            }
+#endif
+
+            if (!hasCharacterModel)
+            {
+                MeshFilter mf = EnsureComponent<MeshFilter>(player);
+                MeshRenderer mr = EnsureComponent<MeshRenderer>(player);
+
+                GameObject tempCapsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                mf.sharedMesh = tempCapsule.GetComponent<MeshFilter>().sharedMesh;
+                DestroyImmediate(tempCapsule);
+
+                mr.material = CreateMaterial(new Color(0.2f, 0.85f, 0.4f));
+            }
 
             CapsuleCollider cc = EnsureComponent<CapsuleCollider>(player);
             cc.isTrigger = true;
             cc.height = 2f;
             cc.radius = 0.5f;
-            cc.center = Vector3.zero;
+            cc.center = new Vector3(0f, 1f, 0f); // Center of capsule is 1 unit up from feet
 
             Rigidbody rb = EnsureComponent<Rigidbody>(player);
             rb.isKinematic = true;
@@ -112,11 +170,29 @@ namespace EndlessRunner
             PlayerCollision pcol = EnsureComponent<PlayerCollision>(player);
             PlayerAnimator pa = EnsureComponent<PlayerAnimator>(player);
             SetPrivateField(pa, "playerController", pc);
-            SetPrivateField(pa, "meshRenderer", mr);
 
             // --- Track ---
             GameObject trackParent = CreateOrFind("TrackManager");
             TrackManager tm = EnsureComponent<TrackManager>(trackParent);
+
+            // Setup Cyberpunk Environment Props
+#if UNITY_EDITOR
+            if (tm.sideProps.Count == 0)
+            {
+                string[] buildingNames = { "office_building_1.prefab", "office_building_2.prefab", "mid_house_1.prefab" };
+                foreach (string bName in buildingNames)
+                {
+                    GameObject b = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Versatile Studio Assets/Demo City By Versatile Studio/Prefabs/" + bName);
+                    if (b != null) tm.sideProps.Add(b);
+                }
+            }
+
+            if (tm.lampProps.Count == 0)
+            {
+                GameObject l = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Versatile Studio Assets/Demo City By Versatile Studio/Prefabs/lamp_pole_dual.prefab");
+                if (l != null) tm.lampProps.Add(l);
+            }
+#endif
 
             // --- Obstacle Spawner ---
             GameObject spawnerObj = CreateOrFind("ObstacleSpawner");
@@ -132,19 +208,27 @@ namespace EndlessRunner
             EnsureComponent<GameOverScreen>(uiObj);
             EnsureComponent<MainMenu>(uiObj);
 
-            // --- Camera ---
+            // --- Camera & Environment ---
             Camera mainCam = Camera.main;
+            Color nightSkyColor = new Color(0.02f, 0.02f, 0.05f); // Very dark blue/black
+            
             if (mainCam != null)
             {
                 mainCam.transform.position = new Vector3(0f, 5f, -8f);
                 mainCam.transform.rotation = Quaternion.Euler(20f, 0f, 0f);
                 mainCam.fieldOfView = 60f;
                 mainCam.clearFlags = CameraClearFlags.SolidColor;
-                mainCam.backgroundColor = new Color(0.4f, 0.6f, 0.9f);
+                mainCam.backgroundColor = nightSkyColor;
             }
 
+            // Enable Fog to hide the background pop-in
+            RenderSettings.fog = true;
+            RenderSettings.fogColor = nightSkyColor;
+            RenderSettings.fogMode = FogMode.ExponentialSquared;
+            RenderSettings.fogDensity = 0.015f;
+
             // --- Lighting ---
-            Light[] lights = FindObjectsByType<Light>(FindObjectsSortMode.None);
+            Light[] lights = FindObjectsByType<Light>(FindObjectsInactive.Exclude);
             bool hasDirectional = false;
             foreach (var l in lights)
                 if (l.type == LightType.Directional) { hasDirectional = true; break; }
@@ -159,7 +243,7 @@ namespace EndlessRunner
             }
 
             // --- Event System for UI ---
-            if (FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
+            if (FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
             {
                 GameObject esObj = new GameObject("EventSystem");
                 esObj.AddComponent<UnityEngine.EventSystems.EventSystem>();

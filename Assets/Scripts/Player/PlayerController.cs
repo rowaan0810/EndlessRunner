@@ -99,15 +99,16 @@ namespace EndlessRunner.Player
 
         private void HandleJump(IGameInput input)
         {
-            if (input.JumpRequested && isGrounded && !isDucking)
+            if (input.JumpRequested)
             {
-                verticalVelocity = jumpForce;
-                isGrounded = false;
-                input.ConsumeJump();
-            }
-            else if (input.JumpRequested && !isGrounded)
-            {
-                // Can't jump mid-air, consume to prevent buffering issues
+                if (isGrounded && !isDucking)
+                {
+                    verticalVelocity = jumpForce;
+                    isGrounded = false;
+                }
+                
+                // ALWAYS consume the jump, regardless of whether we actually jumped or not.
+                // This prevents buffered jumps from triggering instantly when the player lands or stops ducking.
                 input.ConsumeJump();
             }
         }

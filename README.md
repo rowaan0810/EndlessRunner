@@ -1,12 +1,14 @@
-# EndlessRunner
+# EndlessRunner — Cyberpunk Pose-Controlled Runner
 
 A simplified endless runner inspired by Subway Surfers, built in Unity 6 as a TEEP project.
+Control the game with your **body via webcam** using MediaPipe pose detection, or use the keyboard.
 
 ## Features
 - **3-Lane Running**: Dodge obstacles by switching lanes, jumping, and ducking
-- **Webcam Pose Control**: Use your body to play — step, jump, and crouch (coming Week 3)
-- **Easy Mode**: Reduced movement for elderly/low-mobility users (coming Week 3)
-- **AI Pose Challenges**: Match random poses mid-run for power-ups (coming Week 4)
+- **Webcam Pose Control**: Use your body to play — lean to switch lanes, jump to jump, crouch to duck
+- **Easy Mode**: Reduced movement thresholds for elderly/low-mobility users
+- **Cyberpunk Environment**: Procedurally generated neon city with fog and night lighting
+- **3D Animated Character**: Mixamo-rigged character with run, jump, and roll animations
 - **Keyboard Controls**: Full arrow key / WASD support
 
 ## Controls (Keyboard)
@@ -20,28 +22,51 @@ A simplified endless runner inspired by Subway Surfers, built in Unity 6 as a TE
 | Escape | Quit |
 
 ## Quick Start
-1. Open the project in Unity 6 (6000.4.7f1)
-2. Open `Assets/Scenes/MainScene` (or any empty scene)
-3. Create an empty GameObject and add the `SceneSetup` component
-4. Press Play — the scene auto-builds and the game starts
+1. Open the project in **Unity 6** (6000.4.7f1 or later)
+2. Import the required third-party assets (see below)
+3. Open `Assets/Scenes/MainScene` (or any empty scene)
+4. Create an empty GameObject and add the `SceneSetup` component
+5. Press Play — the scene auto-builds and the game starts
+
+## Required Third-Party Assets (not included in repo)
+
+These assets are free but cannot be redistributed. Download and import them manually:
+
+| Asset | Source | Instructions |
+|-------|--------|--------------|
+| **Demo City by Versatile Studio** | [Unity Asset Store](https://assetstore.unity.com/packages/3d/environments/demo-city-by-versatile-studio-mobile-friendly-269772) (Free) | Add to My Assets → Package Manager → Import |
+| **David character (Ch28_nonPBR)** | [Mixamo](https://www.mixamo.com/) (Free) | Download character + Running, Jumping, Stand To Roll animations as FBX → place in `Assets/Art/Character/` |
+
+After importing the Mixamo assets, run **Tools → Endless Runner → Setup 3D Character** from the Unity menu bar.
 
 ## Project Structure
 ```
 Assets/
 ├── Scripts/
-│   ├── Core/           # GameManager, GameSpeed
-│   ├── Input/          # IGameInput, KeyboardInput, InputManager
-│   ├── Player/         # PlayerController, PlayerCollision, PlayerAnimator
-│   ├── Track/          # TrackManager, TrackSegment
-│   └── SceneSetup.cs   # Auto-creates scene hierarchy
-├── Prefabs/
+│   ├── Core/              # GameManager, GameSpeed
+│   ├── Input/             # IGameInput, KeyboardInput, PoseInput, EasyModeInput, InputManager
+│   │   └── PoseDetection/ # PoseController, MediaPipeManager
+│   ├── Player/            # PlayerController, PlayerCollision, PlayerAnimator
+│   ├── Track/             # TrackManager, TrackSegment
+│   ├── Obstacles/         # ObstacleSpawner, Obstacle
+│   ├── Collectibles/      # Coin
+│   ├── UI/                # GameHUD, MainMenu, GameOverScreen
+│   └── SceneSetup.cs      # Auto-creates scene hierarchy
+├── Editor/                # SetupCharacterEditor (Mixamo automation)
+├── Art/Character/          # Mixamo FBX files + Animator Controller (gitignored)
 ├── Scenes/
-└── Materials/
+└── MediaPipeUnity/         # MediaPipe Unity Plugin
 ```
 
+## Tech Stack
+- **Engine**: Unity 6 (URP)
+- **Pose Detection**: MediaPipe Unity Plugin
+- **Character**: Mixamo (David)
+- **Environment**: Demo City by Versatile Studio
+- **Language**: C#
+
 ## Development Timeline
-- **Week 1** (Sep 14–21): Core runner mechanics, keyboard input
-- **Week 2** (Sep 22–28): Obstacles, scoring, UI, game loop
-- **Week 3** (Sep 29–Oct 5): MediaPipe pose control, Easy Mode
-- **Week 4** (Oct 6–9): AI Pose Challenges, polish
-- **Weeks 5–6** (Oct 10–25): AI-generated 3D assets, extra features
+- **Week 1**: Core runner mechanics, keyboard input, 3-lane movement
+- **Week 2**: Obstacles, coins, scoring, UI, full game loop
+- **Week 3**: MediaPipe pose control, Easy Mode, input refinement
+- **Design Phase**: 3D character integration, Cyberpunk environment, visual polish

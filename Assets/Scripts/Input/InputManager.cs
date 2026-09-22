@@ -2,6 +2,7 @@
 // Holds references to all IGameInput implementations and exposes the active one.
 
 using UnityEngine;
+using EndlessRunner.Input.PoseDetection;
 
 namespace EndlessRunner.Input
 {
@@ -22,10 +23,8 @@ namespace EndlessRunner.Input
 
         [Header("Input Implementations")]
         [SerializeField] private KeyboardInput keyboardInput;
-
-        // These will be added in Week 3:
-        // [SerializeField] private PoseInput poseInput;
-        // [SerializeField] private EasyModeInput easyModeInput;
+        [SerializeField] private PoseInput poseInput;
+        [SerializeField] private EasyModeInput easyModeInput;
 
         [Header("Settings")]
         [SerializeField] private InputMode currentMode = InputMode.Keyboard;
@@ -48,21 +47,25 @@ namespace EndlessRunner.Input
                 return;
             }
             Instance = this;
-            // Do NOT call SetMode here — serialized fields may not be wired yet
-            // when components are added dynamically via SceneSetup.
         }
 
         private void Start()
         {
-            // Auto-find KeyboardInput if not assigned
+            // Auto-find inputs if not assigned
             if (keyboardInput == null)
-            {
                 keyboardInput = GetComponent<KeyboardInput>();
-            }
             if (keyboardInput == null)
-            {
-                keyboardInput = FindFirstObjectByType<KeyboardInput>();
-            }
+                keyboardInput = FindAnyObjectByType<KeyboardInput>();
+
+            if (poseInput == null)
+                poseInput = GetComponent<PoseInput>();
+            if (poseInput == null)
+                poseInput = FindAnyObjectByType<PoseInput>();
+
+            if (easyModeInput == null)
+                easyModeInput = GetComponent<EasyModeInput>();
+            if (easyModeInput == null)
+                easyModeInput = FindAnyObjectByType<EasyModeInput>();
 
             SetMode(currentMode);
 
@@ -87,17 +90,55 @@ namespace EndlessRunner.Input
             {
                 case InputMode.Keyboard:
                     CurrentInput = keyboardInput;
+                    // Stop webcam if switching away from pose modes
+                    StopPoseDetectionIfRunning();
                     break;
+
                 case InputMode.WebcamPose:
-                    // Will be implemented in Week 3
-                    Debug.Log("WebcamPose input not yet implemented, falling back to Keyboard");
-                    CurrentInput = keyboardInput;
+                    if (poseInput != null)
+                    {
+                        CurrentInput = poseInput;
+                        StartPoseDetection();
+                    }
+                    else
+                    {
+                        Debug.LogWarning("WebcamPose input not available, falling back to Keyboard");
+                        CurrentInput = keyboardInput;
+                        currentMode = InputMode.Keyboard;
+                    }
                     break;
+
                 case InputMode.EasyMode:
-                    // Will be implemented in Week 3
-                    Debug.Log("EasyMode input not yet implemented, falling back to Keyboard");
-                    CurrentInput = keyboardInput;
+                    if (easyModeInput != null)
+                    {
+                        CurrentInput = easyModeInput;
+                        StartPoseDetection();
+                    }
+                    else
+                    {
+                        Debug.LogWarning("EasyMode input not available, falling back to Keyboard");
+                        CurrentInput = keyboardInput;
+                        currentMode = InputMode.Keyboard;
+                    }
                     break;
+            }
+
+            Debug.Log($"InputManager: Switched to {currentMode} ({CurrentInput?.GetType().Name})");
+        }
+
+        private void StartPoseDetection()
+        {
+            if (MediaPipeManager.Instance != null && !MediaPipeManager.Instance.IsRunning)
+            {
+                MediaPipeManager.Instance.StartDetection();
+            }
+        }
+
+        private void StopPoseDetectionIfRunning()
+        {
+            if (MediaPipeManager.Instance != null && MediaPipeManager.Instance.IsRunning)
+            {
+                MediaPipeManager.Instance.StopDetection();
             }
         }
 

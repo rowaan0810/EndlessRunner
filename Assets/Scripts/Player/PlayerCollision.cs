@@ -28,12 +28,7 @@ namespace EndlessRunner.Player
             bool isObstacle = other.GetComponent<Obstacle>() != null
                            || other.GetComponentInParent<Obstacle>() != null;
 
-            // Also check tag as fallback
-            if (!isObstacle)
-            {
-                try { isObstacle = other.CompareTag("Obstacle"); }
-                catch { /* Tag doesn't exist */ }
-            }
+
 
             if (isObstacle)
             {

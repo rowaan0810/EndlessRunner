@@ -19,6 +19,7 @@ namespace EndlessRunner.UI
         private Text coinText;
         private Text speedText;
         private Text modeText;
+        private Text debugText;
         private Image speedBar;
         private GameObject hudPanel;
 
@@ -53,12 +54,36 @@ namespace EndlessRunner.UI
 
             if (modeText != null && InputManager.Instance != null)
                 modeText.text = InputManager.Instance.GetModeName();
+
+            if (debugText != null)
+            {
+                var pi = InputManager.Instance?.GetComponent<PoseInput>();
+                var emi = InputManager.Instance?.GetComponent<EasyModeInput>();
+                var res = new EndlessRunner.Input.PoseDetection.PoseResult();
+                bool hasRes = false;
+
+                if (pi != null && pi.isActiveAndEnabled && pi.IsAvailable) { res = pi.GetLastResult(); hasRes = true; }
+                else if (emi != null && emi.isActiveAndEnabled && emi.IsAvailable) { res = emi.GetLastResult(); hasRes = true; }
+
+                if (hasRes && res.tracking)
+                {
+                    debugText.text = $"Ready: {res.ready}\n" +
+                                     $"HipLift: {res.hipLift:F2} / {res.jumpThresh:F2}\n" +
+                                     $"HipVel: {res.hipVel:F2}\n" +
+                                     $"NoseDrop: {res.noseDrop:F2} / {res.duckThresh:F2}\n" +
+                                     $"Ankles: {(res.anklesOk ? "OK" : "HIDDEN")}";
+                }
+                else
+                {
+                    debugText.text = "Tracking: OFF";
+                }
+            }
         }
 
         private void CreateHUD()
         {
             // Find or create Canvas
-            Canvas canvas = FindFirstObjectByType<Canvas>();
+            Canvas canvas = FindAnyObjectByType<Canvas>();
             if (canvas == null)
             {
                 GameObject canvasObj = new GameObject("UICanvas");
@@ -134,6 +159,14 @@ namespace EndlessRunner.UI
                 new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(0f, 0f),
                 new Vector2(20f, 15f), new Vector2(200f, 30f));
             modeText.color = new Color(0.6f, 0.6f, 0.7f);
+
+            // Debug Text — center left
+            debugText = CreateText(hudPanel.transform, "DebugText",
+                "", 16, TextAnchor.MiddleLeft,
+                new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
+                new Vector2(20f, 0f), new Vector2(300f, 400f));
+            debugText.color = new Color(1f, 1f, 1f, 0.8f);
+            AddShadow(debugText.gameObject);
         }
 
         #region UI Helpers
