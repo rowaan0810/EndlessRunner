@@ -9,7 +9,6 @@ namespace EndlessRunner.EditorScripts
     {
         private const string characterFolder = "Assets/Art/Character";
         private const string controllerPath = characterFolder + "/PlayerAnimController.controller";
-        private const string playerPrefabPath = "Assets/Prefabs/Player.prefab";
 
         [MenuItem("Tools/Endless Runner/Setup 3D Character")]
         public static void SetupCharacter()
@@ -26,10 +25,10 @@ namespace EndlessRunner.EditorScripts
             // 2. Build Animator Controller
             AnimatorController controller = BuildAnimatorController();
 
-            // 3. Update Player Prefab
+            // 3. Update Player Object in Scene
             if (controller != null)
             {
-                UpdatePlayerPrefab(controller);
+                UpdatePlayerInScene(controller);
             }
 
             Debug.Log("Character setup complete!");
@@ -148,74 +147,100 @@ namespace EndlessRunner.EditorScripts
             return null;
         }
 
-        private static void UpdatePlayerPrefab(AnimatorController controller)
+        private static void UpdatePlayerInScene(AnimatorController controller)
         {
-            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(playerPrefabPath);
-            if (prefab == null)
+            GameObject playerObj = GameObject.Find("Player");
+            if (playerObj == null)
             {
-                Debug.LogError($"Could not find Player prefab at {playerPrefabPath}");
+                Debug.LogError("Could not find a GameObject named 'Player' in the active scene.");
                 return;
             }
-
-            GameObject prefabInstance = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
             
             // 1. Disable Capsule
-            Transform capsule = prefabInstance.transform.Find("Capsule");
+            Transform capsule = playerObj.transform.Find("Capsule");
             if (capsule != null)
             {
                 capsule.gameObject.SetActive(false);
             }
             else
             {
-                var mesh = prefabInstance.GetComponent<MeshRenderer>();
+                var mesh = playerObj.GetComponent<MeshRenderer>();
                 if (mesh != null) mesh.enabled = false;
             }
 
-            // 2. Add Character Model
-            string modelPath = characterFolder + "/Ch28_nonPBR.fbx";
-            GameObject modelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(modelPath);
-            if (modelPrefab == null)
-            {
-                Debug.LogError($"Could not find character model at {modelPath}");
-                Object.DestroyImmediate(prefabInstance);
-                return;
-            }
-
-            Transform oldModel = prefabInstance.transform.Find("Ch28_nonPBR");
-            if (oldModel != null) Object.DestroyImmediate(oldModel.gameObject);
-
-            GameObject modelInstance = PrefabUtility.InstantiatePrefab(modelPrefab, prefabInstance.transform) as GameObject;
-            modelInstance.name = "Ch28_nonPBR";
-            
-            // Player collider is typically 2m high with pivot at center. 
-            // Mixamo characters usually have pivot at feet.
-            // Move character down by 1 unit to align feet with bottom of capsule collider.
-            modelInstance.transform.localPosition = new Vector3(0, -1f, 0);
-            
-            // 3. Setup Animator
-            Animator animator = prefabInstance.GetComponent<Animator>();
-            if (animator == null) animator = prefabInstance.AddComponent<Animator>();
-            
-            Animator modelAnimator = modelInstance.GetComponent<Animator>();
-            if (modelAnimator != null)
-            {
-                animator.avatar = modelAnimator.avatar;
-                Object.DestroyImmediate(modelAnimator); // Prevent double animators
-            }
-
+            // 2. Setup Animator on Root
+            Animator animator = playerObj.GetComponent<Animator>();
+            if (animator == null) animator = playerObj.AddComponent<Animator>();
             animator.runtimeAnimatorController = controller;
 
-            // 4. Hook up PlayerAnimator
-            var playerAnim = prefabInstance.GetComponent<EndlessRunner.Player.PlayerAnimator>();
+            // 3. Clear old character models
+            var oldSelector = playerObj.GetComponent<EndlessRunner.Player.CharacterSelector>();
+            if (oldSelector != null) Object.DestroyImmediate(oldSelector);
+            
+            // Remove any existing children that are models (we assume they don't have our core scripts)
+            for (int i = playerObj.transform.childCount - 1; i >= 0; i--)
+            {
+                Transform child = playerObj.transform.GetChild(i);
+                if (child.name != "Capsule") Object.DestroyImmediate(child.gameObject);
+            }
+
+            // 4. Add all new Character Models
+            EndlessRunner.Player.CharacterSelector selector = playerObj.AddComponent<EndlessRunner.Player.CharacterSelector>();
+            System.Collections.Generic.List<GameObject> modelsList = new System.Collections.Generic.List<GameObject>();
+            System.Collections.Generic.List<Avatar> avatarsList = new System.Collections.Generic.List<Avatar>();
+
+            string[] fbxFiles = Directory.GetFiles(characterFolder, "*.fbx");
+            foreach (string file in fbxFiles)
+            {
+                string lower = file.ToLower();
+                // Skip animation files
+                if (lower.Contains("run") || lower.Contains("jump") || lower.Contains("roll")) continue;
+
+                GameObject modelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(file);
+                if (modelPrefab == null) continue;
+
+                GameObject modelInstance = PrefabUtility.InstantiatePrefab(modelPrefab, playerObj.transform) as GameObject;
+                modelInstance.name = Path.GetFileNameWithoutExtension(file);
+                
+                // Align feet to capsule bottom
+                modelInstance.transform.localPosition = new Vector3(0, -1f, 0);
+
+                // Get avatar
+                Animator modelAnimator = modelInstance.GetComponent<Animator>();
+                if (modelAnimator != null)
+                {
+                    avatarsList.Add(modelAnimator.avatar);
+                    Object.DestroyImmediate(modelAnimator); // Prevent double animators
+                }
+                else
+                {
+                    avatarsList.Add(null);
+                }
+
+                // Hide initially
+                modelInstance.SetActive(modelsList.Count == 0); 
+                modelsList.Add(modelInstance);
+            }
+
+            if (modelsList.Count > 0)
+            {
+                animator.avatar = avatarsList[0];
+            }
+
+            selector.models = modelsList.ToArray();
+            selector.avatars = avatarsList.ToArray();
+
+            // 5. Hook up PlayerAnimator
+            var playerAnim = playerObj.GetComponent<EndlessRunner.Player.PlayerAnimator>();
             if (playerAnim != null)
             {
                 playerAnim.enabled = true;
             }
-
-            PrefabUtility.SaveAsPrefabAsset(prefabInstance, playerPrefabPath);
-            Object.DestroyImmediate(prefabInstance);
             
-            Debug.Log("Player prefab updated successfully with new character model!");
+            // Mark scene as dirty so the changes are saved
+            UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(playerObj.scene);
+
+            Debug.Log($"Player updated successfully in the scene with {modelsList.Count} character models!");
         }
     }
 }

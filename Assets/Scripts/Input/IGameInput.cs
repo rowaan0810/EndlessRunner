@@ -6,7 +6,7 @@ namespace EndlessRunner.Input
 {
     /// <summary>
     /// Abstraction for game input. Implementations include KeyboardInput,
-    /// PoseInput, and EasyModeInput. The PlayerController consumes this
+    /// PoseInput. The PlayerController consumes this
     /// interface without knowing the source.
     /// </summary>
     public interface IGameInput

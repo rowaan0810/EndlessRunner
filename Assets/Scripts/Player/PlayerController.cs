@@ -19,8 +19,8 @@ namespace EndlessRunner.Player
         [SerializeField] private float laneSwitchSpeed = 10f;     // How fast the player slides between lanes
 
         [Header("Jump Settings")]
-        [SerializeField] private float jumpForce = 10f;           // Initial upward velocity
-        [SerializeField] private float gravity = -30f;            // Custom gravity for snappy jumps
+        [SerializeField] private float jumpForce = 7.5f;          // Was 8.5f
+        [SerializeField] private float gravity = -14f;            // Was -20f (Even floatier jump)
         [SerializeField] private float groundY = 0.5f;            // Y position when grounded (capsule center)
 
         [Header("Duck Settings")]

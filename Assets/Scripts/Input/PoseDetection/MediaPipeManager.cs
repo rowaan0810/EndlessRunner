@@ -14,7 +14,7 @@ namespace EndlessRunner.Input.PoseDetection
 {
     /// <summary>
     /// Manages webcam capture and MediaPipe pose landmark detection.
-    /// Outputs PoseLandmark[] each frame for consumption by PoseInput/EasyModeInput.
+    /// Outputs PoseLandmark[] each frame for consumption by PoseInput.
     /// Self-bootstraps MediaPipe (no separate Bootstrap component needed).
     /// </summary>
     public class MediaPipeManager : MonoBehaviour
@@ -54,7 +54,7 @@ namespace EndlessRunner.Input.PoseDetection
         private Texture2D inputTexture;
         private PoseLandmarkerResult latestResult;
         private bool isInitialized;
-        private bool isGlogInitialized;
+        public static bool IsGlogInitialized;
         private long lastTimestampMs = -1;
 
         private void Awake()
@@ -149,23 +149,32 @@ namespace EndlessRunner.Input.PoseDetection
                 yield break;
             }
 
-            Debug.Log($"MediaPipeManager: Using webcam: {devices[0].name}");
-            WebcamTexture = new WebCamTexture(devices[0].name, preferredWidth, preferredHeight, preferredFps);
-            WebcamTexture.Play();
-
-            // Wait for webcam to be ready
-            int maxWait = 150;
-            while (!WebcamTexture.didUpdateThisFrame && maxWait > 0)
+            var hgm = HandGestureManager.Instance;
+            if (hgm != null && hgm.WebcamTexture != null && hgm.WebcamTexture.isPlaying)
             {
-                maxWait--;
-                yield return null;
+                WebcamTexture = hgm.WebcamTexture;
+                Debug.Log("MediaPipeManager: Reusing existing webcam from HandGestureManager.");
             }
-
-            if (WebcamTexture.width <= 16)
+            else
             {
-                StatusMessage = "ERROR: Webcam failed to start!";
-                Debug.LogError("MediaPipeManager: Webcam failed to start!");
-                yield break;
+                Debug.Log($"MediaPipeManager: Using webcam: {devices[0].name}");
+                WebcamTexture = new WebCamTexture(devices[0].name, preferredWidth, preferredHeight, preferredFps);
+                WebcamTexture.Play();
+
+                // Wait for webcam to be ready
+                int maxWait = 150;
+                while (!WebcamTexture.didUpdateThisFrame && maxWait > 0)
+                {
+                    maxWait--;
+                    yield return null;
+                }
+
+                if (WebcamTexture.width <= 16)
+                {
+                    StatusMessage = "ERROR: Webcam failed to start!";
+                    Debug.LogError("MediaPipeManager: Webcam failed to start!");
+                    yield break;
+                }
             }
 
             inputTexture = new Texture2D(WebcamTexture.width, WebcamTexture.height, TextureFormat.RGBA32, false);
@@ -182,10 +191,10 @@ namespace EndlessRunner.Input.PoseDetection
         {
             Protobuf.SetLogHandler(Protobuf.DefaultLogHandler);
 
-            if (!isGlogInitialized)
+            if (!IsGlogInitialized)
             {
                 Glog.Initialize("MediaPipeUnityPlugin");
-                isGlogInitialized = true;
+                IsGlogInitialized = true;
             }
 
 #if UNITY_EDITOR
@@ -276,10 +285,10 @@ namespace EndlessRunner.Input.PoseDetection
         {
             StopDetection();
 
-            if (isGlogInitialized)
+            if (IsGlogInitialized)
             {
                 Glog.Shutdown();
-                isGlogInitialized = false;
+                IsGlogInitialized = false;
             }
             Protobuf.ResetLogHandler();
         }

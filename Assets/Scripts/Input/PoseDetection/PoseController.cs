@@ -1,74 +1,38 @@
-// PoseController.cs — Direct C# port of SurfCam's pose-logic.mjs.
-// Pure math: rolling percentiles, torso-normalized signals, hysteresis.
-// No Unity dependencies — takes float arrays, returns intents.
+// PoseController.cs — Gesture detection for the endless runner.
+// 
+// GESTURES:
+//   Jump  = Raise RIGHT hand clearly above your HEAD
+//   Duck  = Raise LEFT hand clearly above your HEAD
+//   Super = Raise BOTH hands clearly above your HEAD
+//   Lanes = Lean torso left/right
+//
+// MediaPipe coordinate system:
+//   X: 0 = left edge of frame, 1 = right edge
+//   Y: 0 = TOP of frame, 1 = BOTTOM of frame  (Y grows DOWN!)
+//   Landmark labels are from the PERSON's perspective (not camera's)
 
 using System;
-using System.Collections.Generic;
+using UnityEngine;
 
 namespace EndlessRunner.Input.PoseDetection
 {
-    /// <summary>
-    /// Landmark indices for MediaPipe's 33-point pose model.
-    /// </summary>
     public static class LM
     {
         public const int NOSE = 0;
         public const int L_SHOULDER = 11;
         public const int R_SHOULDER = 12;
+        public const int L_WRIST = 15;
+        public const int R_WRIST = 16;
         public const int L_HIP = 23;
         public const int R_HIP = 24;
-        public const int L_KNEE = 25;
-        public const int R_KNEE = 26;
-        public const int L_ANKLE = 27;
-        public const int R_ANKLE = 28;
     }
 
-    /// <summary>
-    /// A single landmark with x, y, z, visibility.
-    /// Coordinates are normalized [0,1], y grows DOWN.
-    /// </summary>
     public struct PoseLandmark
     {
         public float x, y, z;
         public float visibility;
     }
 
-    /// <summary>
-    /// Tuning constants. Matches SurfCam's DEFAULTS.
-    /// </summary>
-    public class PoseSettings
-    {
-        public bool mirror = true;
-        public float laneMargin = 0.03f;
-        public float laneCenterHalf = 1f / 6f;
-        public float laneSmoothing = 0.6f;
-        public float jumpLift = 0.22f;
-        public float jumpHipLift = 0.12f;
-        public float jumpNoAnkleHipLift = 0.24f;
-        public float jumpVelocity = 1.2f;
-        public float jumpHipFloor = -0.05f;
-        public float jumpScale = 0.25f;
-        public float duckScale = 0.5f;
-        public float duckHoldMs = 150f;
-        public float velocityWindowMs = 66f;
-        public float rearmFrac = 0.4f;
-        public float duckDrop = 0.45f;
-        public float maxActionJumpMs = 1500f;
-        public float maxActionDuckMs = 4000f;
-        public float ankleWindowMs = 1500f;
-        public float anklePercentile = 0.75f;
-        public float standWindowMs = 5000f;
-        public float standPercentile = 0.25f;
-        public float torsoWindowMs = 2000f;
-        public float cooldownJumpMs = 600f;
-        public float cooldownDuckMs = 700f;
-        public float warmupMs = 1000f;
-        public float minVisibility = 0.5f;
-    }
-
-    /// <summary>
-    /// Output from PoseController.Update().
-    /// </summary>
     public struct PoseResult
     {
         public bool ready;
@@ -76,306 +40,184 @@ namespace EndlessRunner.Input.PoseDetection
         public bool laneChanged;
         public bool jumpEvent;
         public bool duckEvent;
+        public bool superDashEvent;
         public bool tracking;
 
-        // Debug metrics
-        public float hipLift, noseLift, feetLift, jumpSignal, hipVel, noseDrop;
-        public float jumpThresh, duckThresh;
-        public bool anklesOk;
+        // Live state for HUD overlay
         public float smoothedX;
+        public bool rightHandUp;
+        public bool leftHandUp;
+        public float noseY, noseX;
+        public float rWristY, lWristY;
+        public float shoulderMidY;
     }
 
-    /// <summary>
-    /// Time-windowed percentile tracker. Exact port of SurfCam's RollingPercentile.
-    /// </summary>
-    public class RollingPercentile
-    {
-        private readonly float windowMs;
-        private readonly float q;
-        private readonly List<(float t, float v)> samples = new List<(float, float)>();
-
-        public RollingPercentile(float windowMs, float q = 0.5f)
-        {
-            this.windowMs = windowMs;
-            this.q = q;
-        }
-
-        public void Push(float t, float v)
-        {
-            samples.Add((t, v));
-            float cutoff = t - windowMs;
-            while (samples.Count > 0 && samples[0].t < cutoff)
-                samples.RemoveAt(0);
-        }
-
-        public float SpanMs => samples.Count > 0
-            ? samples[samples.Count - 1].t - samples[0].t
-            : 0f;
-
-        public float Value()
-        {
-            if (samples.Count == 0) return float.NaN;
-            var sorted = new List<float>(samples.Count);
-            for (int i = 0; i < samples.Count; i++) sorted.Add(samples[i].v);
-            sorted.Sort();
-            float pos = (sorted.Count - 1) * q;
-            int lo = (int)Math.Floor(pos);
-            int hi = (int)Math.Ceiling(pos);
-            return lo == hi ? sorted[lo] : sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
-        }
-
-        public void Clear() => samples.Clear();
-    }
-
-    /// <summary>
-    /// Core pose controller. Line-by-line port of SurfCam's PoseController class.
-    /// Takes 33 normalized landmarks + timestamp, outputs lane/jump/duck intents.
-    /// </summary>
     public class PoseController
     {
-        public PoseSettings Settings { get; private set; }
+        // ── Lane tuning ──
+        private const float LANE_CENTER_HALF = 1f / 6f;
+        private const float LANE_MARGIN = 0.03f;
+        private const float LANE_SMOOTHING = 0.6f;
+
+        // ── Gesture tuning ──
+        private const float WARMUP_MS = 800f;
+        private const float COOLDOWN_JUMP_MS = 800f;
+        private const float COOLDOWN_DUCK_MS = 800f;
+        private const float COOLDOWN_SUPER_MS = 30000f;
+        private const int HOLD_FRAMES = 3;
+
+        public bool Mirror { get; set; } = true;
 
         // State
         private int lane = 1;
         private float? firstT;
-        private RollingPercentile torsoBase;
-        private RollingPercentile ankleLBase, ankleRBase;
-        private RollingPercentile hipStand, noseStand;
-        private List<(float t, float y)> hipHistory;
-        private float? laneX;
-        private float? duckAboveSince;
-        private bool armedJump, armedDuck;
-        private float lastFiredJump, lastFiredDuck;
+        private float? smoothedX;
+        private float lastJumpT = float.NegativeInfinity;
+        private float lastDuckT = float.NegativeInfinity;
+        private float lastSuperT = float.NegativeInfinity;
+        private int rHold, lHold;
+        private bool rWasUp, lWasUp;
+        private int frameCount;
 
         public int CurrentLane => lane;
 
-        public PoseController(PoseSettings settings = null)
-        {
-            Settings = settings ?? new PoseSettings();
-            Reset();
-        }
-
         public void Reset()
         {
-            var o = Settings;
             lane = 1;
             firstT = null;
-            torsoBase = new RollingPercentile(o.torsoWindowMs, 0.5f);
-            ankleLBase = new RollingPercentile(o.ankleWindowMs, o.anklePercentile);
-            ankleRBase = new RollingPercentile(o.ankleWindowMs, o.anklePercentile);
-            hipStand = new RollingPercentile(o.standWindowMs, o.standPercentile);
-            noseStand = new RollingPercentile(o.standWindowMs, o.standPercentile);
-            hipHistory = new List<(float, float)>();
-            laneX = null;
-            duckAboveSince = null;
-            armedJump = true;
-            armedDuck = true;
-            lastFiredJump = float.NegativeInfinity;
-            lastFiredDuck = float.NegativeInfinity;
+            smoothedX = null;
+            lastJumpT = float.NegativeInfinity;
+            lastDuckT = float.NegativeInfinity;
+            lastSuperT = float.NegativeInfinity;
+            rHold = lHold = 0;
+            rWasUp = lWasUp = false;
+            frameCount = 0;
         }
 
-        /// <summary>
-        /// Visibility-weighted centre of the torso polygon.
-        /// </summary>
-        public static (float x, float y) TorsoCenter(PoseLandmark[] landmarks)
+        public PoseResult Update(PoseLandmark[] lm, float t)
         {
-            float sx = 0, sy = 0, sw = 0;
-            int[] indices = { LM.L_SHOULDER, LM.R_SHOULDER, LM.L_HIP, LM.R_HIP };
-            foreach (int i in indices)
-            {
-                var p = landmarks[i];
-                float w = Math.Max(0.05f, p.visibility);
-                sx += p.x * w;
-                sy += p.y * w;
-                sw += w;
-            }
-            return (sx / sw, sy / sw);
-        }
-
-        /// <summary>
-        /// 3-band lane detection with hysteresis.
-        /// </summary>
-        public static int LaneFromX(float x, int currentLane, float margin, float centerHalf = 1f / 6f)
-        {
-            float b1 = 0.5f - centerHalf, b2 = 0.5f + centerHalf;
-            if (currentLane == 0) return x > b1 + margin ? (x > b2 + margin ? 2 : 1) : 0;
-            if (currentLane == 2) return x < b2 - margin ? (x < b1 - margin ? 0 : 1) : 2;
-            if (x < b1 - margin) return 0;
-            if (x > b2 + margin) return 2;
-            return 1;
-        }
-
-        private float HipVelocity(float t, float hipY, float torso)
-        {
-            var o = Settings;
-            hipHistory.Add((t, hipY));
-            while (hipHistory.Count > 2 && hipHistory[1].t <= t - o.velocityWindowMs)
-                hipHistory.RemoveAt(0);
-            var old = hipHistory[0];
-            float dt = (t - old.t) / 1000f;
-            if (dt <= 0) return 0;
-            return (old.y - hipY) / torso / dt; // positive = moving up
-        }
-
-        private static bool Visible(PoseLandmark lm, float min)
-        {
-            return lm.visibility >= min;
-        }
-
-        /// <summary>
-        /// Process one frame of landmarks. Returns game intents.
-        /// </summary>
-        /// <param name="landmarks">33 MediaPipe pose landmarks (normalized, y grows DOWN)</param>
-        /// <param name="t">Timestamp in milliseconds</param>
-        public PoseResult Update(PoseLandmark[] landmarks, float t)
-        {
-            var o = Settings;
-
-            if (landmarks == null || landmarks.Length < 33)
-            {
-                return new PoseResult { ready = false, lane = lane, tracking = false };
-            }
+            var r = new PoseResult { lane = lane, tracking = false };
+            if (lm == null || lm.Length < 33) return r;
+            r.tracking = true;
 
             if (firstT == null) firstT = t;
+            bool ready = (t - firstT.Value) >= WARMUP_MS;
+            r.ready = ready;
+            frameCount++;
 
-            var ls = landmarks[LM.L_SHOULDER];
-            var rs = landmarks[LM.R_SHOULDER];
-            var lh = landmarks[LM.L_HIP];
-            var rh = landmarks[LM.R_HIP];
-            var la = landmarks[LM.L_ANKLE];
-            var ra = landmarks[LM.R_ANKLE];
-            var nose = landmarks[LM.NOSE];
+            // ════════════════════════════════════════
+            // 1. READ KEY LANDMARKS
+            // ════════════════════════════════════════
+            float noseY = lm[LM.NOSE].y;
+            float noseX = lm[LM.NOSE].x;
 
-            bool anklesOk = Visible(la, o.minVisibility) && Visible(ra, o.minVisibility);
-            bool hipsOk = Visible(lh, o.minVisibility) && Visible(rh, o.minVisibility);
-            
-            // If hips aren't visible (user sitting close to webcam), 
-            // MediaPipe guesses their location which causes massive jitter.
-            // Fallback to a fixed torso scale based on shoulder width if hips are hidden.
-            float shoulderY = (ls.y + rs.y) / 2f;
-            float hipY = hipsOk ? (lh.y + rh.y) / 2f : shoulderY + Math.Abs(ls.x - rs.x) * 1.5f; 
-            
-            float torsoNow = Math.Max(1e-3f, hipY - shoulderY);
+            // Person's right wrist and left wrist (MediaPipe labels from person's perspective)
+            float personRWristY = lm[LM.R_WRIST].y;
+            float personLWristY = lm[LM.L_WRIST].y;
+            float personRWristVis = lm[LM.R_WRIST].visibility;
+            float personLWristVis = lm[LM.L_WRIST].visibility;
 
-            torsoBase.Push(t, torsoNow);
-            float torso = torsoBase.Value();
-            if (float.IsNaN(torso)) torso = torsoNow;
+            float shoulderMidY = (lm[LM.L_SHOULDER].y + lm[LM.R_SHOULDER].y) * 0.5f;
+            float shoulderMidX = (lm[LM.L_SHOULDER].x + lm[LM.R_SHOULDER].x) * 0.5f;
 
-            if (anklesOk)
-            {
-                ankleLBase.Push(t, la.y);
-                ankleRBase.Push(t, ra.y);
-            }
-            hipStand.Push(t, hipY);
-            noseStand.Push(t, nose.y);
-            float hipVel = hipsOk ? HipVelocity(t, hipY, torso) : HipVelocity(t, nose.y, torso);
+            r.noseY = noseY;
+            r.noseX = noseX;
+            r.shoulderMidY = shoulderMidY;
+            // Store the PERSON's right/left wrist Y for HUD display
+            r.rWristY = personRWristY;
+            r.lWristY = personLWristY;
 
-            // Lanes: centre of torso polygon, mirrored, lightly smoothed
-            var tc = TorsoCenter(landmarks);
-            float rawX = o.mirror ? 1f - tc.x : tc.x;
-            if (laneX == null) laneX = rawX;
-            else laneX = o.laneSmoothing * rawX + (1f - o.laneSmoothing) * laneX.Value;
-            float xm = laneX.Value;
-            int newLane = LaneFromX(xm, lane, o.laneMargin, o.laneCenterHalf);
-            bool laneChanged = newLane != lane;
+            // ════════════════════════════════════════
+            // 2. LANE DETECTION
+            // ════════════════════════════════════════
+            // For lanes: mirror the X so leaning left in real life = lane 0
+            float rawX = Mirror ? 1f - shoulderMidX : shoulderMidX;
+            if (smoothedX == null) smoothedX = rawX;
+            else smoothedX = LANE_SMOOTHING * rawX + (1f - LANE_SMOOTHING) * smoothedX.Value;
+
+            float xm = smoothedX.Value;
+            r.smoothedX = xm;
+            int newLane = LaneFromX(xm, lane);
+            r.laneChanged = newLane != lane;
             lane = newLane;
+            r.lane = lane;
 
-            // Vertical signals in torso units (positive = moved UP)
-            float hipStandVal = hipStand.Value();
-            float noseStandVal = noseStand.Value();
-            float hipLift = (hipStandVal - hipY) / torso;
-            float noseLift = (noseStandVal - nose.y) / torso;
-            float liftL = anklesOk ? (ankleLBase.Value() - la.y) / torso : float.NaN;
-            float liftR = anklesOk ? (ankleRBase.Value() - ra.y) / torso : float.NaN;
-            float feetLift = anklesOk ? Math.Min(liftL, liftR) : float.NaN;
+            // ════════════════════════════════════════
+            // 3. ARM-RAISE DETECTION
+            // ════════════════════════════════════════
+            // "Hand above head" = wrist Y is LESS than nose Y (because Y grows DOWN)
+            // We use nose as the reference, NOT shoulders — this requires a deliberate 
+            // arm raise above your head, not just hands at chest level.
+            //
+            // NO mirror swap needed here — MediaPipe labels wrists from the person's 
+            // perspective, so R_WRIST is always the person's right hand regardless of camera.
 
-            bool ready = (t - firstT.Value) >= o.warmupMs && hipStand.SpanMs >= o.warmupMs * 0.8f;
+            bool personRightHandUp = personRWristVis >= 0.3f && personRWristY < noseY;
+            bool personLeftHandUp = personLWristVis >= 0.3f && personLWristY < noseY;
 
-            // Timeouts
-            if (!armedJump && t - lastFiredJump > o.maxActionJumpMs) armedJump = true;
-            if (!armedDuck && t - lastFiredDuck > o.maxActionDuckMs) armedDuck = true;
+            // Hold counter — require HOLD_FRAMES consecutive frames of "up"
+            rHold = personRightHandUp ? rHold + 1 : 0;
+            lHold = personLeftHandUp ? lHold + 1 : 0;
 
-            // Jump
-            float k = o.jumpScale;
-            float kd = o.duckScale;
-            float jumpSignal, jumpThresh;
+            bool rUp = rHold >= HOLD_FRAMES;
+            bool lUp = lHold >= HOLD_FRAMES;
+            r.rightHandUp = rUp;
+            r.leftHandUp = lUp;
 
-            if (anklesOk)
+            // Debug log every 60 frames so we can see what's happening
+            if (frameCount % 60 == 0)
             {
-                jumpSignal = hipLift > o.jumpHipFloor ? feetLift : Math.Min(feetLift, 0);
-                jumpThresh = o.jumpLift * k;
-            }
-            else
-            {
-                jumpSignal = Math.Min(hipLift, noseLift);
-                jumpThresh = o.jumpNoAnkleHipLift * k;
-            }
-
-            float duckThresh = o.duckDrop * kd;
-            bool fastEnough = hipVel > o.jumpVelocity;
-            bool jumpEvent = false;
-
-            if (armedJump)
-            {
-                if (ready && jumpSignal > jumpThresh && fastEnough && t - lastFiredJump > o.cooldownJumpMs)
-                {
-                    jumpEvent = true;
-                    lastFiredJump = t;
-                    armedJump = false;
-                }
-            }
-            else if (jumpSignal < jumpThresh * o.rearmFrac)
-            {
-                armedJump = true;
+                Debug.Log($"[PoseCtrl] noseY={noseY:F3} shoulderY={shoulderMidY:F3} " +
+                          $"R_wristY={personRWristY:F3}(vis={personRWristVis:F2}) " +
+                          $"L_wristY={personLWristY:F3}(vis={personLWristVis:F2}) " +
+                          $"rUp={personRightHandUp} lUp={personLeftHandUp} " +
+                          $"rHold={rHold} lHold={lHold}");
             }
 
-            // Duck
-            float noseDrop = -noseLift;
-            if (noseDrop > duckThresh)
-            {
-                if (duckAboveSince == null) duckAboveSince = t;
-            }
-            else
-            {
-                duckAboveSince = null;
-            }
-            bool duckHeld = duckAboveSince != null && t - duckAboveSince.Value >= o.duckHoldMs;
-            bool duckNow = noseDrop > o.duckDrop || (noseDrop > duckThresh && (duckHeld || kd >= 1f));
-            bool duckEvent = false;
+            if (!ready) { rWasUp = rUp; lWasUp = lUp; return r; }
 
-            if (armedDuck)
+            // ════════════════════════════════════════
+            // 4. FIRE EVENTS (rising edge + cooldown)
+            // ════════════════════════════════════════
+
+            // Super Dash: both hands confirmed up, rising edge
+            if (rUp && lUp && !(rWasUp && lWasUp) && t - lastSuperT > COOLDOWN_SUPER_MS)
             {
-                if (ready && duckNow && t - lastFiredDuck > o.cooldownDuckMs)
-                {
-                    duckEvent = true;
-                    lastFiredDuck = t;
-                    armedDuck = false;
-                }
-            }
-            else if (noseDrop < duckThresh * o.rearmFrac)
-            {
-                armedDuck = true;
+                r.superDashEvent = true;
+                lastSuperT = t;
+                Debug.Log("[PoseCtrl] >>> SUPER DASH FIRED");
             }
 
-            return new PoseResult
+            // Jump: person's right hand up, rising edge
+            if (!r.superDashEvent && rUp && !rWasUp && t - lastJumpT > COOLDOWN_JUMP_MS)
             {
-                ready = ready,
-                lane = lane,
-                laneChanged = laneChanged,
-                jumpEvent = jumpEvent,
-                duckEvent = duckEvent,
-                tracking = true,
-                anklesOk = anklesOk,
-                hipLift = hipLift,
-                noseLift = noseLift,
-                feetLift = feetLift,
-                jumpSignal = jumpSignal,
-                hipVel = hipVel,
-                noseDrop = noseDrop,
-                jumpThresh = jumpThresh,
-                duckThresh = duckThresh,
-                smoothedX = xm,
-            };
+                r.jumpEvent = true;
+                lastJumpT = t;
+                Debug.Log("[PoseCtrl] >>> JUMP FIRED");
+            }
+
+            // Duck: person's left hand up, rising edge
+            if (!r.superDashEvent && lUp && !lWasUp && t - lastDuckT > COOLDOWN_DUCK_MS)
+            {
+                r.duckEvent = true;
+                lastDuckT = t;
+                Debug.Log("[PoseCtrl] >>> DUCK FIRED");
+            }
+
+            rWasUp = rUp;
+            lWasUp = lUp;
+
+            return r;
+        }
+
+        private static int LaneFromX(float x, int current)
+        {
+            float b1 = 0.5f - LANE_CENTER_HALF, b2 = 0.5f + LANE_CENTER_HALF;
+            if (current == 0) return x > b1 + LANE_MARGIN ? (x > b2 + LANE_MARGIN ? 2 : 1) : 0;
+            if (current == 2) return x < b2 - LANE_MARGIN ? (x < b1 - LANE_MARGIN ? 0 : 1) : 2;
+            if (x < b1 - LANE_MARGIN) return 0;
+            if (x > b2 + LANE_MARGIN) return 2;
+            return 1;
         }
     }
 }

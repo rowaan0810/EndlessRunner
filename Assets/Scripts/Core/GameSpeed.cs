@@ -72,6 +72,15 @@ namespace EndlessRunner.Core
         {
             if (!isRunning) return;
 
+            // In webcam mode, use very slow acceleration (0.1/s vs 0.3/s in keyboard)
+            var im = EndlessRunner.Input.InputManager.Instance;
+            if (im != null && im.CurrentMode == Input.InputMode.Webcam)
+            {
+                elapsedTime += Time.deltaTime;
+                Current = Mathf.Min(baseSpeed + (elapsedTime * 0.1f), maxSpeed);
+                return;
+            }
+
             elapsedTime += Time.deltaTime;
             Current = Mathf.Min(baseSpeed + (elapsedTime * acceleration), maxSpeed);
         }

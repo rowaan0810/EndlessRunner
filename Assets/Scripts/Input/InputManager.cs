@@ -9,8 +9,7 @@ namespace EndlessRunner.Input
     public enum InputMode
     {
         Keyboard,
-        WebcamPose,
-        EasyMode
+        Webcam
     }
 
     /// <summary>
@@ -24,7 +23,6 @@ namespace EndlessRunner.Input
         [Header("Input Implementations")]
         [SerializeField] private KeyboardInput keyboardInput;
         [SerializeField] private PoseInput poseInput;
-        [SerializeField] private EasyModeInput easyModeInput;
 
         [Header("Settings")]
         [SerializeField] private InputMode currentMode = InputMode.Keyboard;
@@ -62,11 +60,6 @@ namespace EndlessRunner.Input
             if (poseInput == null)
                 poseInput = FindAnyObjectByType<PoseInput>();
 
-            if (easyModeInput == null)
-                easyModeInput = GetComponent<EasyModeInput>();
-            if (easyModeInput == null)
-                easyModeInput = FindAnyObjectByType<EasyModeInput>();
-
             SetMode(currentMode);
 
             if (CurrentInput == null)
@@ -94,7 +87,7 @@ namespace EndlessRunner.Input
                     StopPoseDetectionIfRunning();
                     break;
 
-                case InputMode.WebcamPose:
+                case InputMode.Webcam:
                     if (poseInput != null)
                     {
                         CurrentInput = poseInput;
@@ -102,21 +95,7 @@ namespace EndlessRunner.Input
                     }
                     else
                     {
-                        Debug.LogWarning("WebcamPose input not available, falling back to Keyboard");
-                        CurrentInput = keyboardInput;
-                        currentMode = InputMode.Keyboard;
-                    }
-                    break;
-
-                case InputMode.EasyMode:
-                    if (easyModeInput != null)
-                    {
-                        CurrentInput = easyModeInput;
-                        StartPoseDetection();
-                    }
-                    else
-                    {
-                        Debug.LogWarning("EasyMode input not available, falling back to Keyboard");
+                        Debug.LogWarning("Webcam input not available, falling back to Keyboard");
                         CurrentInput = keyboardInput;
                         currentMode = InputMode.Keyboard;
                     }
@@ -128,18 +107,22 @@ namespace EndlessRunner.Input
 
         private void StartPoseDetection()
         {
+            // Start hand gesture detection (for jump/duck)
+            if (HandGestureManager.Instance != null && !HandGestureManager.Instance.IsRunning)
+                HandGestureManager.Instance.StartDetection();
+
+            // Start pose detection (for body lean lane switching)
             if (MediaPipeManager.Instance != null && !MediaPipeManager.Instance.IsRunning)
-            {
                 MediaPipeManager.Instance.StartDetection();
-            }
         }
 
         private void StopPoseDetectionIfRunning()
         {
+            if (HandGestureManager.Instance != null && HandGestureManager.Instance.IsRunning)
+                HandGestureManager.Instance.StopDetection();
+
             if (MediaPipeManager.Instance != null && MediaPipeManager.Instance.IsRunning)
-            {
                 MediaPipeManager.Instance.StopDetection();
-            }
         }
 
         /// <summary>
@@ -150,8 +133,7 @@ namespace EndlessRunner.Input
             return currentMode switch
             {
                 InputMode.Keyboard => "Keyboard",
-                InputMode.WebcamPose => "Webcam Pose",
-                InputMode.EasyMode => "Easy Mode",
+                InputMode.Webcam => "Webcam",
                 _ => "Unknown"
             };
         }

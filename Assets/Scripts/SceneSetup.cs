@@ -81,15 +81,14 @@ namespace EndlessRunner
             InputManager im = EnsureComponent<InputManager>(managers);
             KeyboardInput ki = EnsureComponent<KeyboardInput>(managers);
             PoseInput pi = EnsureComponent<PoseInput>(managers);
-            EasyModeInput emi = EnsureComponent<EasyModeInput>(managers);
 
             SetPrivateField(im, "keyboardInput", ki);
             SetPrivateField(im, "poseInput", pi);
-            SetPrivateField(im, "easyModeInput", emi);
 
-            // --- MediaPipe Pose Detection ---
+            // --- MediaPipe Detection ---
             GameObject poseDetector = CreateOrFind("PoseDetector");
             EnsureComponent<MediaPipeManager>(poseDetector);
+            EnsureComponent<HandGestureManager>(poseDetector);
 
             // --- Player ---
             GameObject player = GameObject.Find("Player");
@@ -207,6 +206,7 @@ namespace EndlessRunner
             EnsureComponent<GameHUD>(uiObj);
             EnsureComponent<GameOverScreen>(uiObj);
             EnsureComponent<MainMenu>(uiObj);
+            EnsureComponent<WebcamHUD>(uiObj);
 
             // --- Camera & Environment ---
             Camera mainCam = Camera.main;
