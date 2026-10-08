@@ -35,9 +35,9 @@ These assets are free but cannot be redistributed. Download and import them manu
 | Asset | Source | Instructions |
 |-------|--------|--------------|
 | **Demo City by Versatile Studio** | [Unity Asset Store](https://assetstore.unity.com/packages/3d/environments/demo-city-by-versatile-studio-mobile-friendly-269772) (Free) | Add to My Assets → Package Manager → Import |
-| **Characters (David, Ty, Big Vegas)** | [Mixamo](https://www.mixamo.com/) (Free) | Download characters + Running, Jumping, Stand To Roll animations as FBX. Extract Textures & Materials, then place in `Assets/Art/Character/` |
+| **Characters (David, Ty, Big Vegas, Tung Tung, etc.)** | [Mixamo](https://www.mixamo.com/) (Free) | Download characters + Running, Jumping, Stand To Roll animations as FBX. Extract Textures & Materials, then place in `Assets/Art/Character/` |
 
-After importing the Mixamo assets and extracting their textures, run **Tools → Endless Runner → Setup 3D Character** from the Unity menu bar.
+After importing the Mixamo assets and extracting their textures, run **Tools → Endless Runner → Setup 3D Character** from the Unity menu bar. This will automatically wire up any new `.fbx` character you add to the game!
 
 ## Project Structure
 ```
