@@ -5,10 +5,10 @@ Control the game with your **body via webcam** using MediaPipe pose detection, o
 
 ## Features
 - **3-Lane Running**: Dodge obstacles by switching lanes, jumping, and ducking
-- **Webcam Pose Control**: Use your body to play — lean to switch lanes, jump to jump, crouch to duck
-- **Easy Mode**: Reduced movement thresholds for elderly/low-mobility users
+- **Webcam Hand Gestures**: Use your body to play — lean to switch lanes, raise your right index finger to jump, and open your palm to duck.
+- **Easy Mode**: Merged with webcam mode for seamless play without exaggerated movements.
 - **Cyberpunk Environment**: Procedurally generated neon city with fog and night lighting
-- **3D Animated Character**: Mixamo-rigged character with run, jump, and roll animations
+- **Multiple Characters**: Support for multiple 3D characters (David, Ty, Big Vegas) swappable from the Main Menu.
 - **Keyboard Controls**: Full arrow key / WASD support
 
 ## Controls (Keyboard)
@@ -35,9 +35,9 @@ These assets are free but cannot be redistributed. Download and import them manu
 | Asset | Source | Instructions |
 |-------|--------|--------------|
 | **Demo City by Versatile Studio** | [Unity Asset Store](https://assetstore.unity.com/packages/3d/environments/demo-city-by-versatile-studio-mobile-friendly-269772) (Free) | Add to My Assets → Package Manager → Import |
-| **David character (Ch28_nonPBR)** | [Mixamo](https://www.mixamo.com/) (Free) | Download character + Running, Jumping, Stand To Roll animations as FBX → place in `Assets/Art/Character/` |
+| **Characters (David, Ty, Big Vegas)** | [Mixamo](https://www.mixamo.com/) (Free) | Download characters + Running, Jumping, Stand To Roll animations as FBX. Extract Textures & Materials, then place in `Assets/Art/Character/` |
 
-After importing the Mixamo assets, run **Tools → Endless Runner → Setup 3D Character** from the Unity menu bar.
+After importing the Mixamo assets and extracting their textures, run **Tools → Endless Runner → Setup 3D Character** from the Unity menu bar.
 
 ## Project Structure
 ```

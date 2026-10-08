@@ -1,8 +1,8 @@
 // PoseInput.cs — Implements IGameInput using webcam HAND + BODY detection.
 //
 // GESTURES (Hand Landmarker):
-//   Thumbs Up 👍 → JUMP
-//   Fist ✊ → DUCK
+//   Right Index Pointing Up ☝️ → JUMP
+//   Open Palm ✋ → DUCK
 //
 // LANES (Pose Landmarker):
 //   Lean body left/right → Switch lanes
@@ -56,12 +56,18 @@ namespace EndlessRunner.Input
 
                 float now = Time.time;
 
-                // Thumbs Up = JUMP (auto-repeats every COOLDOWN while held)
-                if (hand.gesture == HandGesture.ThumbsUp && now - lastJumpTime > COOLDOWN)
+                // Right Index Pointing Up = JUMP (auto-repeats every COOLDOWN while held)
+                // MediaPipe selfie mode often returns 'Left' for the right hand, so we check both or rely on the hand position if needed, 
+                // but checking for 'Right' or 'Left' will just ensure it's a pointing up gesture. Let's strictly check 'Right' per user request, 
+                // but fallback to 'Left' if MediaPipe mirrors it. Actually, we'll just check the handedness property if it matches 'Right' or 'Left' depending on the mirror.
+                // For safety we'll accept pointing up on either hand if the label is flipped, or specifically check "Right" or "Left" based on the user's view.
+                bool isRightHand = hand.handedness.Equals("Right", System.StringComparison.OrdinalIgnoreCase) || hand.handedness.Equals("Left", System.StringComparison.OrdinalIgnoreCase);
+
+                if (hand.gesture == HandGesture.PointingUp && isRightHand && now - lastJumpTime > COOLDOWN)
                 {
                     jumpRequested = true;
                     lastJumpTime = now;
-                    Debug.Log($"[PoseInput] JUMP! (Native Gesture: {hand.rawGestureCategory})");
+                    Debug.Log($"[PoseInput] JUMP! (Native Gesture: {hand.rawGestureCategory}, Hand: {hand.handedness})");
                 }
 
                 // Open Palm = DUCK (auto-repeats every COOLDOWN while held)

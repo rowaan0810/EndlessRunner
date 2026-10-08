@@ -19,9 +19,9 @@ namespace EndlessRunner.Player
         [SerializeField] private float laneSwitchSpeed = 10f;     // How fast the player slides between lanes
 
         [Header("Jump Settings")]
-        [SerializeField] private float jumpForce = 7.5f;          // Was 8.5f
-        [SerializeField] private float gravity = -14f;            // Was -20f (Even floatier jump)
-        [SerializeField] private float groundY = 0.5f;            // Y position when grounded (capsule center)
+        [SerializeField] private float jumpForce = 6.5f;          // Lowered force to compensate for lower gravity
+        [SerializeField] private float gravity = -10f;            // Was -14f (More floaty jump to widen the timing window)
+        [SerializeField] private float groundY = 0f;              // Was 0.5f. Set to 0 so feet touch the ground (fixes collision skip)
 
         [Header("Duck Settings")]
         [SerializeField] private float duckDuration = 0.8f;       // How long the duck/roll lasts
@@ -60,9 +60,14 @@ namespace EndlessRunner.Player
 
         private void Start()
         {
-            // Save default collider dimensions
+            // Add toe-clipping forgiveness: Shrink the bottom of the collider slightly
             if (playerCollider != null)
             {
+                float forgiveness = 0.3f; // Raise the bottom edge by 0.3 units
+                playerCollider.height -= forgiveness;
+                playerCollider.center = new Vector3(playerCollider.center.x, playerCollider.center.y + (forgiveness * 0.5f), playerCollider.center.z);
+
+                // Save default collider dimensions for restoring after a duck
                 defaultColliderHeight = playerCollider.height;
                 defaultColliderCenterY = playerCollider.center.y;
             }

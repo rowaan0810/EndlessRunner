@@ -152,8 +152,10 @@ namespace EndlessRunner.EditorScripts
             GameObject playerObj = GameObject.Find("Player");
             if (playerObj == null)
             {
-                Debug.LogError("Could not find a GameObject named 'Player' in the active scene.");
-                return;
+                Debug.Log("Player GameObject not found. Creating a new one...");
+                playerObj = new GameObject("Player");
+                playerObj.transform.position = Vector3.zero;
+                try { playerObj.tag = "Player"; } catch { }
             }
             
             // 1. Disable Capsule
@@ -202,8 +204,41 @@ namespace EndlessRunner.EditorScripts
                 GameObject modelInstance = PrefabUtility.InstantiatePrefab(modelPrefab, playerObj.transform) as GameObject;
                 modelInstance.name = Path.GetFileNameWithoutExtension(file);
                 
-                // Align feet to capsule bottom
-                modelInstance.transform.localPosition = new Vector3(0, -1f, 0);
+                // Align feet to capsule bottom (Player pivot is already at ground level)
+                modelInstance.transform.localPosition = Vector3.zero;
+
+                // Fix material shader for URP (so it's not colorless/white)
+                Renderer[] renderers = modelInstance.GetComponentsInChildren<Renderer>();
+                Shader urpShader = EndlessRunner.SceneSetup.FindWorkingShader();
+                foreach (var rnd in renderers)
+                {
+                    if (rnd.sharedMaterials == null) continue;
+                    foreach (var mat in rnd.sharedMaterials)
+                    {
+                        if (mat != null) 
+                        {
+                            // Try to grab the texture from either MainTex or BaseMap
+                            Texture tex = null;
+                            if (mat.HasProperty("_BaseMap")) tex = mat.GetTexture("_BaseMap");
+                            if (tex == null && mat.HasProperty("_MainTex")) tex = mat.GetTexture("_MainTex");
+                            
+                            mat.shader = urpShader;
+                            
+                            // Re-apply the texture to URP's _BaseMap property
+                            if (tex != null && mat.HasProperty("_BaseMap"))
+                            {
+                                mat.SetTexture("_BaseMap", tex);
+                            }
+                            // Also ensure the base color is white so it doesn't tint the texture grey
+                            if (mat.HasProperty("_BaseColor"))
+                            {
+                                mat.SetColor("_BaseColor", Color.white);
+                            }
+
+                            UnityEditor.EditorUtility.SetDirty(mat); // Ensure the material saves
+                        }
+                    }
+                }
 
                 // Get avatar
                 Animator modelAnimator = modelInstance.GetComponent<Animator>();

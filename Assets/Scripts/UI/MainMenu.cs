@@ -108,7 +108,7 @@ namespace EndlessRunner.UI
                 modeDescription.text = selectedMode switch
                 {
                     InputMode.Keyboard => "Arrow Keys / WASD to move  |  Space: Jump  |  S: Duck",
-                    InputMode.Webcam => "👍 Thumbs Up: Jump  |  ✋ Open Palm: Duck  |  Lean: Lanes",
+                    InputMode.Webcam => "☝️ Right Index Finger: Jump  |  ✋ Open Palm: Duck  |  Lean: Lanes",
                     _ => ""
                 };
             }

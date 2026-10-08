@@ -58,6 +58,7 @@ namespace EndlessRunner.Player
             if (animator != null && avatars != null && index < avatars.Length)
             {
                 animator.avatar = avatars[index];
+                animator.Rebind(); // REQUIRED: Forces the animator to re-evaluate the new avatar bindings
             }
         }
 

@@ -27,7 +27,8 @@ namespace EndlessRunner.Input.PoseDetection
         None,
         OpenPalm,
         ThumbsUp,
-        Fist
+        Fist,
+        PointingUp
     }
 
     public struct HandGestureResult
@@ -306,28 +307,38 @@ namespace EndlessRunner.Input.PoseDetection
                 
                 // Map native categories to our enum
                 string catLower = gestureCategory.ToLower();
-                if (catLower.Contains("thumb_up") || catLower.Contains("thumb_down"))
+                if (catLower.Contains("pointing_up"))
+                    gesture = HandGesture.PointingUp;
+                else if (catLower.Contains("thumb_up") || catLower.Contains("thumb_down"))
                     gesture = HandGesture.ThumbsUp;
                 else if (catLower.Contains("open_palm") || catLower.Contains("paper") || catLower.Contains("five"))
                     gesture = HandGesture.OpenPalm;
                 else if (catLower.Contains("closed_fist") || catLower.Contains("rock"))
                     gesture = HandGesture.Fist;
 
-                // Fallback heuristic if the model is unsure
-                if (gesture == HandGesture.None)
-                {
-                    int extendedFingers = 0;
-                    float wristX = landmarks[0].x, wristY = landmarks[0].y;
-                    
-                    int[] tips = { 8, 12, 16, 20 };
-                    int[] pips = { 6, 10, 14, 18 };
-                    for (int j = 0; j < 4; j++)
-                    {
-                        float tipDist = Dist(landmarks[tips[j]].x, landmarks[tips[j]].y, wristX, wristY);
-                        float pipDist = Dist(landmarks[pips[j]].x, landmarks[pips[j]].y, wristX, wristY);
-                        if (tipDist > pipDist * 1.05f) extendedFingers++;
-                    }
+                // MediaPipe's ML model often misclassifies "Index Pointing Up" as "Thumb_Down" or "None".
+                // We run a fallback heuristic to override it if the index finger is clearly extended while others are not.
+                float wristX = landmarks[0].x, wristY = landmarks[0].y;
+                int[] tips = { 8, 12, 16, 20 }; // Index, Middle, Ring, Pinky
+                int[] pips = { 6, 10, 14, 18 };
+                int extendedFingers = 0;
+                bool isIndexExtended = false;
 
+                for (int j = 0; j < 4; j++)
+                {
+                    float tipDist = Dist(landmarks[tips[j]].x, landmarks[tips[j]].y, wristX, wristY);
+                    float pipDist = Dist(landmarks[pips[j]].x, landmarks[pips[j]].y, wristX, wristY);
+                    bool extended = tipDist > pipDist * 1.05f;
+                    if (extended) extendedFingers++;
+                    if (j == 0 && extended) isIndexExtended = true; // Index finger
+                }
+
+                if (isIndexExtended && extendedFingers == 1)
+                {
+                    gesture = HandGesture.PointingUp;
+                }
+                else if (gesture == HandGesture.None)
+                {
                     if (extendedFingers >= 3)
                         gesture = HandGesture.OpenPalm;
                     else if (extendedFingers == 0)
@@ -335,7 +346,7 @@ namespace EndlessRunner.Input.PoseDetection
                 }
 
                 // Debug log the raw category so we can see what the model is actually outputting
-                Debug.Log($"[HandGestureManager] Raw Gesture: {gestureCategory} -> Mapped: {gesture}");
+                Debug.Log($"[HandGestureManager] Raw Gesture: {gestureCategory} -> Mapped: {gesture} (Ext Fingers: {extendedFingers})");
 
                 CurrentHands.Add(new HandGestureResult
                 {
