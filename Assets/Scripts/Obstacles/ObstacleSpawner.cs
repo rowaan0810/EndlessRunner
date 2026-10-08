@@ -27,7 +27,7 @@ namespace EndlessRunner.Obstacles
         [SerializeField] private float barrierLowHeight = 0.6f;  // Jump over this
         [SerializeField] private float barrierHighY = 1.5f;      // Duck under this
         [SerializeField] private float barrierHighHeight = 1.0f;
-        [SerializeField] private float barrierFullHeight = 2.5f;  // Full lane block
+        [SerializeField] private float barrierFullHeight = 4.0f;  // Massive wall to prevent jumping
 
         [Header("Pool Settings")]
         [SerializeField] private int obstaclePoolSize = 20;
@@ -447,12 +447,12 @@ namespace EndlessRunner.Obstacles
             Color darkMetal = new Color(0.12f, 0.12f, 0.18f);
             Color warningYellow = new Color(1f, 0.7f, 0f);
 
-            // Main body
+            // Main body - Made massive and thick to indicate it cannot be jumped
             GameObject body = GameObject.CreatePrimitive(PrimitiveType.Cube);
             body.name = "Body";
             body.transform.SetParent(parent.transform);
             body.transform.localPosition = Vector3.zero;
-            body.transform.localScale = new Vector3(0.85f, 0.9f, 0.3f);
+            body.transform.localScale = new Vector3(0.85f, 3.8f, 0.6f);
             DestroyCollider(body);
             SetMaterialColor(body.GetComponent<Renderer>(), darkMetal);
 
@@ -460,8 +460,8 @@ namespace EndlessRunner.Obstacles
             GameObject topBar = GameObject.CreatePrimitive(PrimitiveType.Cube);
             topBar.name = "TopBar";
             topBar.transform.SetParent(parent.transform);
-            topBar.transform.localPosition = new Vector3(0f, 0.35f, 0f);
-            topBar.transform.localScale = new Vector3(0.9f, 0.15f, 0.35f);
+            topBar.transform.localPosition = new Vector3(0f, 1.8f, 0f);
+            topBar.transform.localScale = new Vector3(0.9f, 0.2f, 0.7f);
             DestroyCollider(topBar);
             SetEmissiveMaterial(topBar.GetComponent<Renderer>(), red, 2.5f);
 
@@ -469,8 +469,8 @@ namespace EndlessRunner.Obstacles
             GameObject midStripe = GameObject.CreatePrimitive(PrimitiveType.Cube);
             midStripe.name = "MidStripe";
             midStripe.transform.SetParent(parent.transform);
-            midStripe.transform.localPosition = new Vector3(0f, 0.05f, 0.16f);
-            midStripe.transform.localScale = new Vector3(0.86f, 0.08f, 0.02f);
+            midStripe.transform.localPosition = new Vector3(0f, 0.2f, 0.31f);
+            midStripe.transform.localScale = new Vector3(0.86f, 0.3f, 0.02f);
             DestroyCollider(midStripe);
             SetEmissiveMaterial(midStripe.GetComponent<Renderer>(), warningYellow, 1.5f);
 
@@ -478,8 +478,8 @@ namespace EndlessRunner.Obstacles
             GameObject botStripe = GameObject.CreatePrimitive(PrimitiveType.Cube);
             botStripe.name = "BotStripe";
             botStripe.transform.SetParent(parent.transform);
-            botStripe.transform.localPosition = new Vector3(0f, -0.15f, 0.16f);
-            botStripe.transform.localScale = new Vector3(0.86f, 0.08f, 0.02f);
+            botStripe.transform.localPosition = new Vector3(0f, -0.6f, 0.31f);
+            botStripe.transform.localScale = new Vector3(0.86f, 0.3f, 0.02f);
             DestroyCollider(botStripe);
             SetEmissiveMaterial(botStripe.GetComponent<Renderer>(), warningYellow, 1.5f);
 
@@ -487,14 +487,14 @@ namespace EndlessRunner.Obstacles
             GameObject baseBlock = GameObject.CreatePrimitive(PrimitiveType.Cube);
             baseBlock.name = "Base";
             baseBlock.transform.SetParent(parent.transform);
-            baseBlock.transform.localPosition = new Vector3(0f, -0.4f, 0f);
-            baseBlock.transform.localScale = new Vector3(0.95f, 0.1f, 0.4f);
+            baseBlock.transform.localPosition = new Vector3(0f, -1.8f, 0f);
+            baseBlock.transform.localScale = new Vector3(0.95f, 0.3f, 0.8f);
             DestroyCollider(baseBlock);
             SetMaterialColor(baseBlock.GetComponent<Renderer>(), darkMetal * 0.8f);
 
             // Side indicator lights
-            AddIndicatorLight(parent, new Vector3(-0.44f, 0.35f, 0.18f), red);
-            AddIndicatorLight(parent, new Vector3(0.44f, 0.35f, 0.18f), red);
+            AddIndicatorLight(parent, new Vector3(-0.44f, 1.8f, 0.36f), red);
+            AddIndicatorLight(parent, new Vector3(0.44f, 1.8f, 0.36f), red);
         }
 
         #endregion
