@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using EndlessRunner.Core;
 using EndlessRunner.Input;
+using EndlessRunner.Player;
 
 namespace EndlessRunner.UI
 {
@@ -23,6 +24,11 @@ namespace EndlessRunner.UI
         private Image speedBar;
         private Image speedBarBorder;
         private GameObject hudPanel;
+
+        // Power-up UI
+        private Text powerUpText;
+        private Image powerUpBar;
+        private GameObject powerUpPanel;
 
         // Cyberpunk palette
         private static readonly Color NeonCyan = new Color(0f, 0.95f, 1f);
@@ -86,6 +92,55 @@ namespace EndlessRunner.UI
                 else
                 {
                     debugText.text = "Tracking: OFF";
+                }
+            }
+
+            // Power-up display
+            if (powerUpPanel != null && powerUpText != null && powerUpBar != null)
+            {
+                var pp = PlayerPowerups.Instance;
+                if (pp != null && pp.ActivePowerUp != PowerUpType.None)
+                {
+                    powerUpPanel.SetActive(true);
+                    string label;
+                    Color barColor;
+
+                    switch (pp.ActivePowerUp)
+                    {
+                        case PowerUpType.Shield:
+                            label = "🛡️ SHIELD";
+                            barColor = new Color(0f, 0.9f, 1f);
+                            powerUpBar.fillAmount = 1f; // Shield is always full until consumed
+                            break;
+                        case PowerUpType.CoinMagnet:
+                            label = "🧲 MAGNET";
+                            barColor = new Color(1f, 0.2f, 0.2f);
+                            powerUpBar.fillAmount = pp.PowerUpTotalDuration > 0 ? pp.PowerUpTimeRemaining / pp.PowerUpTotalDuration : 0f;
+                            break;
+                        case PowerUpType.ScoreMultiplier:
+                            label = "⚡ 2X SCORE";
+                            barColor = new Color(1f, 0.85f, 0.15f);
+                            powerUpBar.fillAmount = pp.PowerUpTotalDuration > 0 ? pp.PowerUpTimeRemaining / pp.PowerUpTotalDuration : 0f;
+                            break;
+                        case PowerUpType.TungSmash:
+                            label = "💥 TUNG SMASH";
+                            barColor = new Color(1f, 0.4f, 0f);
+                            powerUpBar.fillAmount = pp.PowerUpTotalDuration > 0 ? pp.PowerUpTimeRemaining / pp.PowerUpTotalDuration : 0f;
+                            break;
+                        default:
+                            label = "";
+                            barColor = Color.white;
+                            powerUpBar.fillAmount = 0f;
+                            break;
+                    }
+
+                    powerUpText.text = label;
+                    powerUpText.color = barColor;
+                    powerUpBar.color = barColor;
+                }
+                else
+                {
+                    powerUpPanel.SetActive(false);
                 }
             }
         }
@@ -217,6 +272,39 @@ namespace EndlessRunner.UI
                 new Vector2(20f, 0f), new Vector2(300f, 400f));
             debugText.color = new Color(0.7f, 0.7f, 0.8f, 0.7f);
             AddGlow(debugText.gameObject, new Color(0f, 0f, 0f, 0.3f));
+
+            // ═══════════════════════════════════
+            // BOTTOM-CENTER: Power-up indicator
+            // ═══════════════════════════════════
+            powerUpPanel = CreateHUDPanel(hudPanel.transform, "PowerUpPanel",
+                new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
+                new Vector2(0f, 80f), new Vector2(280f, 50f));
+
+            powerUpText = CreateText(powerUpPanel.transform, "PowerUpText",
+                "", 20, TextAnchor.MiddleCenter,
+                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                new Vector2(0f, -5f), new Vector2(260f, 25f));
+            powerUpText.color = NeonCyan;
+            powerUpText.fontStyle = FontStyle.Bold;
+            AddGlow(powerUpText.gameObject, NeonCyan);
+
+            // Power-up bar background
+            GameObject puBarBg = CreateImage(powerUpPanel.transform, "PowerUpBarBg",
+                new Color(0.15f, 0.15f, 0.2f, 0.8f),
+                new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0.5f, 0f),
+                new Vector2(0f, 5f), new Vector2(256f, 10f));
+
+            // Power-up bar fill
+            GameObject puBarFill = CreateImage(puBarBg.transform, "PowerUpBarFill",
+                NeonCyan,
+                new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0.5f),
+                Vector2.zero, new Vector2(256f, 10f));
+            powerUpBar = puBarFill.GetComponent<Image>();
+            powerUpBar.type = Image.Type.Filled;
+            powerUpBar.fillMethod = Image.FillMethod.Horizontal;
+            powerUpBar.fillAmount = 0f;
+
+            powerUpPanel.SetActive(false); // Hidden until power-up activates
         }
 
         #region UI Helpers

@@ -3,6 +3,7 @@
 
 using UnityEngine;
 using UnityEngine.Events;
+using EndlessRunner.Player;
 
 namespace EndlessRunner.Core
 {
@@ -35,8 +36,15 @@ namespace EndlessRunner.Core
         /// <summary>Coins collected this run.</summary>
         public int CoinScore { get; private set; }
 
-        /// <summary>Combined score for display.</summary>
-        public int TotalScore => Mathf.FloorToInt(DistanceScore) + (CoinScore * 10);
+        /// <summary>Combined score for display (respects active score multiplier).</summary>
+        public int TotalScore
+        {
+            get
+            {
+                int multiplier = PlayerPowerups.Instance != null ? PlayerPowerups.Instance.ScoreMultiplier : 1;
+                return (Mathf.FloorToInt(DistanceScore) + (CoinScore * 10)) * multiplier;
+            }
+        }
 
         /// <summary>All-time high score from PlayerPrefs.</summary>
         public int HighScore
@@ -120,6 +128,11 @@ namespace EndlessRunner.Core
                 GameSpeed.Instance.ResetSpeed();
 
             OnGameRestart?.Invoke();
+
+            // Reset power-ups on restart
+            if (PlayerPowerups.Instance != null)
+                PlayerPowerups.Instance.ResetPowerUps();
+
             StartGame();
         }
 

@@ -3,6 +3,7 @@
 // GESTURES (Hand Landmarker):
 //   Right Index Pointing Up ☝️ → JUMP
 //   Open Palm ✋ → DUCK
+//   Both Hands Middle Finger 🖕🖕 → ACTIVATE POWER-UP
 //
 // LANES (Pose Landmarker):
 //   Lean body left/right → Switch lanes
@@ -18,13 +19,16 @@ namespace EndlessRunner.Input
         private int desiredLane = 1;
         private bool jumpRequested;
         private bool duckRequested;
+        private bool powerUpRequested;
 
         public int DesiredLane => desiredLane;
         public bool JumpRequested => jumpRequested;
         public bool DuckRequested => duckRequested;
+        public bool PowerUpRequested => powerUpRequested;
 
         public void ConsumeJump() => jumpRequested = false;
         public void ConsumeDuck() => duckRequested = false;
+        public void ConsumePowerUp() => powerUpRequested = false;
 
         public bool IsAvailable => HandGestureManager.Instance != null && HandGestureManager.Instance.IsRunning;
 
@@ -32,7 +36,9 @@ namespace EndlessRunner.Input
         private HandGesture lastGesture = HandGesture.None;
         private float lastJumpTime = -999f;
         private float lastDuckTime = -999f;
+        private float lastPowerUpTime = -999f;
         private const float COOLDOWN = 0.4f;
+        private const float POWERUP_COOLDOWN = 1.5f; // Longer cooldown to prevent accidental re-trigger
 
         // Lane detection from body pose
         private float? smoothedX;
@@ -85,6 +91,33 @@ namespace EndlessRunner.Input
                 CurrentGesture = HandGesture.None;
                 FingersExtended = 0;
                 lastGesture = HandGesture.None;
+            }
+
+            // ── Power-up gesture: Both hands showing middle finger ──
+            if (hgm != null && hgm.IsRunning && hgm.CurrentHands.Count >= 2)
+            {
+                float now = Time.time;
+                bool leftMiddle = false;
+                bool rightMiddle = false;
+
+                foreach (var h in hgm.CurrentHands)
+                {
+                    if (h.gesture == HandGesture.MiddleFinger)
+                    {
+                        // MediaPipe mirrors handedness in selfie mode
+                        if (h.handedness.Equals("Left", System.StringComparison.OrdinalIgnoreCase))
+                            leftMiddle = true;
+                        else if (h.handedness.Equals("Right", System.StringComparison.OrdinalIgnoreCase))
+                            rightMiddle = true;
+                    }
+                }
+
+                if (leftMiddle && rightMiddle && now - lastPowerUpTime > POWERUP_COOLDOWN)
+                {
+                    powerUpRequested = true;
+                    lastPowerUpTime = now;
+                    Debug.Log("[PoseInput] POWER-UP ACTIVATED! (Double Middle Finger)");
+                }
             }
 
             // ── Lane detection from body pose (lean left/right) ──

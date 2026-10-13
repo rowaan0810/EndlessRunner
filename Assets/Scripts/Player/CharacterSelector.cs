@@ -15,6 +15,7 @@ namespace EndlessRunner.Player
         public Avatar[] avatars;
 
         private int currentIndex = 0;
+        public int CurrentIndex => currentIndex;
         private Animator animator;
 
         private void Awake()

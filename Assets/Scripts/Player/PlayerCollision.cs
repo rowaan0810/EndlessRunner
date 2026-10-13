@@ -36,6 +36,11 @@ namespace EndlessRunner.Player
                 {
                     IsShielded = false;
                     Debug.Log("Shield absorbed a collision!");
+
+                    // Notify power-up system to clean up visuals
+                    var powerups = GetComponent<PlayerPowerups>();
+                    if (powerups != null) powerups.ConsumeShield();
+
                     other.gameObject.SetActive(false);
                     return;
                 }

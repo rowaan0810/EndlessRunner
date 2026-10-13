@@ -167,6 +167,7 @@ namespace EndlessRunner
             SetPrivateField(pc, "playerCollider", cc);
 
             PlayerCollision pcol = EnsureComponent<PlayerCollision>(player);
+            PlayerPowerups ppow = EnsureComponent<PlayerPowerups>(player);
             PlayerAnimator pa = EnsureComponent<PlayerAnimator>(player);
             SetPrivateField(pa, "playerController", pc);
 

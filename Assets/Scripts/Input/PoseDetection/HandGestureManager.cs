@@ -28,7 +28,8 @@ namespace EndlessRunner.Input.PoseDetection
         OpenPalm,
         ThumbsUp,
         Fist,
-        PointingUp
+        PointingUp,
+        MiddleFinger
     }
 
     public struct HandGestureResult
@@ -333,7 +334,19 @@ namespace EndlessRunner.Input.PoseDetection
                     if (j == 0 && extended) isIndexExtended = true; // Index finger
                 }
 
-                if (isIndexExtended && extendedFingers == 1)
+                // Check if only middle finger is extended (middle finger gesture)
+                bool isMiddleExtended = false;
+                {
+                    float middleTipDist = Dist(landmarks[12].x, landmarks[12].y, wristX, wristY);
+                    float middlePipDist = Dist(landmarks[10].x, landmarks[10].y, wristX, wristY);
+                    isMiddleExtended = middleTipDist > middlePipDist * 1.05f;
+                }
+
+                if (isMiddleExtended && !isIndexExtended && extendedFingers == 1)
+                {
+                    gesture = HandGesture.MiddleFinger;
+                }
+                else if (isIndexExtended && extendedFingers == 1)
                 {
                     gesture = HandGesture.PointingUp;
                 }
