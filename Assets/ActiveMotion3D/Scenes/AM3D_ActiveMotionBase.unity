@@ -13812,9 +13812,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aaa3df04daec4856ac622502891f07b6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ActiveMotion3D.EndlessRunner.Core.GameSpeed
-  baseSpeed: 10
-  acceleration: 0.3
-  maxSpeed: 30
+  baseSpeed: 15
+  acceleration: 0.5
+  maxSpeed: 50
 --- !u!114 &1992470771
 MonoBehaviour:
   m_ObjectHideFlags: 0
