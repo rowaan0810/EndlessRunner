@@ -50,15 +50,22 @@ namespace ActiveMotion3D.EndlessRunner.Collectibles
                 gameObject.SetActive(false);
             }
         }
-
         private void OnTriggerEnter(Collider other)
         {
             if (other.CompareTag("Player") || other.GetComponent<Player.PlayerController>() != null)
             {
-                // Award coin
-                if (GameManager.Instance != null)
+                if (SfxPlayer.Instance == null)
                 {
-                    GameManager.Instance.AddCoin(1);
+                    Debug.LogWarning("SfxPlayer.Instance is NULL");
+                }
+                else if (SfxPlayer.Instance.coinClip == null)
+                {
+                    Debug.LogWarning("Coin Clip is not assigned");
+                }
+                else
+                {
+                    Debug.Log("Playing coin sound");
+                    SfxPlayer.Instance.Play(SfxPlayer.Instance.coinClip);
                 }
 
                 gameObject.SetActive(false);

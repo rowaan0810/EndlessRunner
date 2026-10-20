@@ -41,6 +41,12 @@ namespace ActiveMotion3D.EndlessRunner.Player
                 }
 
                 Debug.Log($"Player hit obstacle: {other.gameObject.name}");
+
+                Debug.Log($"Player hit obstacle: {other.gameObject.name}");
+
+                if (SfxPlayer.Instance != null && SfxPlayer.Instance.hitClip != null)
+                    SfxPlayer.Instance.Play(SfxPlayer.Instance.hitClip);
+
                 GameManager.Instance.TriggerGameOver();
             }
         }
