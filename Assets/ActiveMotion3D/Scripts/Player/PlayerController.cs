@@ -2,6 +2,7 @@
 // Handles 3-lane switching, jumping, and ducking.
 // Input is read exclusively from IGameInput (fully decoupled from input source).
 
+using System.Collections;
 using UnityEngine;
 using ActiveMotion3D.EndlessRunner.Input;
 using ActiveMotion3D.EndlessRunner.Core;
@@ -32,6 +33,14 @@ namespace ActiveMotion3D.EndlessRunner.Player
         [Header("References")]
         [SerializeField] private CapsuleCollider playerCollider;
 
+        [Header("Camera Movement Feedback")]
+        [Tooltip("Optional override. Leave empty to use the scene's Main Camera.")]
+        [SerializeField] private Camera feedbackCamera;
+        [SerializeField, Range(0f, 1.5f)] private float jumpCameraRise = 0.9f;
+        [SerializeField, Range(0f, 1.5f)] private float slideCameraDrop = 0.75f;
+        [SerializeField, Range(0.1f, 1f)] private float cameraPeakSeconds = 0.5f;
+        [SerializeField, Range(0.1f, 1f)] private float cameraReturnSeconds = 0.5f;
+
         // State
         private int currentLane = 1;         // 0=left, 1=center, 2=right
         private float targetX;               // Target X position for current lane
@@ -44,6 +53,8 @@ namespace ActiveMotion3D.EndlessRunner.Player
         // Collider defaults (saved on start, restored after duck)
         private float defaultColliderHeight;
         private float defaultColliderCenterY;
+        private Vector3 cameraRestLocalPosition;
+        private Coroutine cameraFeedbackRoutine;
 
         /// <summary>Current lane index (0=left, 1=center, 2=right).</summary>
         public int CurrentLane => currentLane;
@@ -78,6 +89,8 @@ namespace ActiveMotion3D.EndlessRunner.Player
             currentLane = 1;
             targetX = 0f;
             transform.position = new Vector3(0f, groundY, 0f);
+            if (feedbackCamera == null) feedbackCamera = Camera.main;
+            if (feedbackCamera != null) cameraRestLocalPosition = feedbackCamera.transform.localPosition;
         }
 
         private void Update()
@@ -124,6 +137,8 @@ namespace ActiveMotion3D.EndlessRunner.Player
                 {
                     verticalVelocity = jumpForce;
                     isGrounded = false;
+                    if (ActiveMotion3D.EndlessRunner.Core.SfxPlayer.Instance != null) ActiveMotion3D.EndlessRunner.Core.SfxPlayer.Instance.PlayJump();
+                    PlayCameraFeedback(jumpCameraRise);
                 }
                 
                 // ALWAYS consume the jump, regardless of whether we actually jumped or not.
@@ -163,6 +178,8 @@ namespace ActiveMotion3D.EndlessRunner.Player
         {
             isDucking = true;
             duckTimer = duckDuration;
+            if (ActiveMotion3D.EndlessRunner.Core.SfxPlayer.Instance != null) ActiveMotion3D.EndlessRunner.Core.SfxPlayer.Instance.PlaySlide();
+            PlayCameraFeedback(-slideCameraDrop);
 
             // Shrink collider
             if (playerCollider != null)
@@ -187,6 +204,37 @@ namespace ActiveMotion3D.EndlessRunner.Player
                 playerCollider.center = new Vector3(0f, defaultColliderCenterY, 0f);
             }
 
+        }
+
+        private void PlayCameraFeedback(float offsetY)
+        {
+            if (feedbackCamera == null || Mathf.Approximately(offsetY, 0f)) return;
+            if (cameraFeedbackRoutine != null) StopCoroutine(cameraFeedbackRoutine);
+            feedbackCamera.transform.localPosition = cameraRestLocalPosition;
+            cameraFeedbackRoutine = StartCoroutine(AnimateCameraFeedback(offsetY));
+        }
+
+        private IEnumerator AnimateCameraFeedback(float offsetY)
+        {
+            Transform cameraTransform = feedbackCamera.transform;
+            Vector3 peakPosition = cameraRestLocalPosition + Vector3.up * offsetY;
+
+            for (float elapsed = 0f; elapsed < cameraPeakSeconds; elapsed += Time.deltaTime)
+            {
+                float progress = Mathf.SmoothStep(0f, 1f, elapsed / cameraPeakSeconds);
+                cameraTransform.localPosition = Vector3.LerpUnclamped(cameraRestLocalPosition, peakPosition, progress);
+                yield return null;
+            }
+
+            for (float elapsed = 0f; elapsed < cameraReturnSeconds; elapsed += Time.deltaTime)
+            {
+                float progress = Mathf.SmoothStep(0f, 1f, elapsed / cameraReturnSeconds);
+                cameraTransform.localPosition = Vector3.LerpUnclamped(peakPosition, cameraRestLocalPosition, progress);
+                yield return null;
+            }
+
+            cameraTransform.localPosition = cameraRestLocalPosition;
+            cameraFeedbackRoutine = null;
         }
 
         private void ApplyMovement()
@@ -233,6 +281,9 @@ namespace ActiveMotion3D.EndlessRunner.Player
 
             transform.position = new Vector3(0f, groundY, 0f);
             transform.localScale = Vector3.one;
+            if (cameraFeedbackRoutine != null) StopCoroutine(cameraFeedbackRoutine);
+            cameraFeedbackRoutine = null;
+            if (feedbackCamera != null) feedbackCamera.transform.localPosition = cameraRestLocalPosition;
 
             // Rebind every authored character Animator so a restart cannot retain
             // the previous run's jump, fall, or duck animation state.

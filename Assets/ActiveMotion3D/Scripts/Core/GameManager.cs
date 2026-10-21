@@ -109,6 +109,11 @@ namespace ActiveMotion3D.EndlessRunner.Core
 
             State = GameState.GameOver;
 
+            // Centralized so obstacle collisions and failed Human Tetris gates
+            // play the crash sound once, after the Playing-state guard above.
+            if (ActiveMotion3D.EndlessRunner.Core.SfxPlayer.Instance != null)
+                ActiveMotion3D.EndlessRunner.Core.SfxPlayer.Instance.PlayHit();
+
             if (GameSpeed.Instance != null)
                 GameSpeed.Instance.StopRunning();
 

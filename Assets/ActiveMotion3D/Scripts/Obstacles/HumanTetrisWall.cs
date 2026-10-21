@@ -50,6 +50,12 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
         [SerializeField, Range(30f, 70f)] private float raisedMinimumDegrees = 40f;
         [SerializeField] private float despawnZ = -15f;
 
+        [Header("Visual")]
+        [Tooltip("Scale of the Human Tetris pose image inside the gate.")]
+        [SerializeField, Range(0.8f, 2.5f)] private float silhouetteScale = 1.8f;
+        [Tooltip("Vertical placement of the short pose instruction on the gate.")]
+        [SerializeField, Range(0.5f, 6.4f)] private float instructionLabelHeight = 6f;
+
         private readonly List<Renderer> silhouetteRenderers = new List<Renderer>();
         private HumanTetrisPose requiredPose;
         private int requiredLane;
@@ -121,6 +127,7 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
             bool passed = poseMatchesNow || recentlyMatched;
             if (passed)
             {
+                if (ActiveMotion3D.EndlessRunner.Core.SfxPlayer.Instance != null) ActiveMotion3D.EndlessRunner.Core.SfxPlayer.Instance.PlaySuccess();
                 Debug.Log($"Human Tetris passed: pose {requiredPose}");
                 gameObject.SetActive(false);
                 return;
@@ -350,7 +357,7 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
             figure.transform.SetParent(transform, false);
             figure.transform.localPosition = new Vector3(0f, -2.1f, -0.34f);
             figure.transform.localRotation = Quaternion.identity;
-            figure.transform.localScale = Vector3.one * 1.4f;
+            figure.transform.localScale = Vector3.one * silhouetteScale;
 
             GameObject head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             head.name = "Head";
@@ -386,12 +393,12 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
 
             GameObject label = new GameObject("Instruction", typeof(TextMesh));
             label.transform.SetParent(transform, false);
-            label.transform.localPosition = new Vector3(0f, 7.05f, -0.3f);
+            label.transform.localPosition = new Vector3(0f, instructionLabelHeight, -0.3f);
             label.transform.localRotation = Quaternion.identity;
             instructionText = label.GetComponent<TextMesh>();
             instructionText.anchor = TextAnchor.MiddleCenter;
             instructionText.alignment = TextAlignment.Center;
-            instructionText.characterSize = 0.18f;
+            instructionText.characterSize = 0.2f;
             instructionText.fontSize = 48;
             instructionText.color = new Color(0.2f, 0.95f, 1f);
 
@@ -413,6 +420,9 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
             Transform figure = transform.Find("PoseSilhouette");
             if (figure == null) return;
             figure.localPosition = new Vector3(laneX, -2.1f, -0.34f);
+            figure.localScale = Vector3.one * silhouetteScale;
+            if (instructionText != null)
+                instructionText.transform.localPosition = new Vector3(laneX, instructionLabelHeight, -0.3f);
 
             Transform head = figure.Find("Head");
             if (head != null) head.localPosition = new Vector3(0f, 3.65f, 0f);
@@ -443,7 +453,7 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
             SetLimb(figure.Find("LeftForearm"), leftElbow, leftWrist);
             SetLimb(figure.Find("RightUpperArm"), shoulderR, rightElbow);
             SetLimb(figure.Find("RightForearm"), rightElbow, rightWrist);
-            instructionText.text = $"HUMAN TETRIS   {PoseLabel(requiredPose)}";
+            instructionText.text = PoseLabel(requiredPose);
         }
 
         private void SetSilhouetteReady(bool ready)

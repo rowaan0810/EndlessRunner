@@ -3,13 +3,14 @@
 // GESTURES (Hand Landmarker + Pose Landmarker):
 //   Right Index Pointing Up ☝️ → JUMP
 //   Open Palm ✋ → DUCK
-//   Shoulders rise (jump/tiptoe) → JUMP
+//   Shoulders rise → JUMP (unless a two-arm Human Tetris pose is held)
 //   Shoulders sink (squat) → DUCK
 //
 // LANES (Pose Landmarker):
 //   Lean body left/right → Switch lanes
 
 using UnityEngine;
+using UnityEngine.Serialization;
 using ActiveMotion3D.EndlessRunner.Input.PoseDetection;
 
 namespace ActiveMotion3D.EndlessRunner.Input
@@ -74,6 +75,10 @@ namespace ActiveMotion3D.EndlessRunner.Input
         [SerializeField] private bool enableBodyVerticalGestures = true;
         [Tooltip("Upward movement required on both shoulders, in normalized camera Y coordinates.")]
         [SerializeField, Range(0.02f, 0.5f)] private float bodyJumpThreshold = 0.035f;
+        [Tooltip("Optional full-body safeguard for wide-camera setups. Leave off when the camera only sees the upper body.")]
+        [SerializeField] private bool requireHipRiseForBodyJump;
+        [Tooltip("Minimum upward movement required on both hips when the optional full-body safeguard is enabled.")]
+        [SerializeField, Range(0.01f, 0.3f)] private float bodyJumpHipThreshold = 0.02f;
         [Tooltip("Downward movement required on both shoulders, in normalized camera Y coordinates.")]
         [SerializeField, Range(0.02f, 0.5f)] private float bodyDuckThreshold = 0.04f;
         [Tooltip("How close shoulders must return to neutral before another body action can fire.")]
@@ -83,6 +88,12 @@ namespace ActiveMotion3D.EndlessRunner.Input
         [SerializeField, Range(1, 8)] private int bodyConfirmationFrames = 1;
         [Tooltip("Enable only if the camera reports vertical pose coordinates in the opposite direction.")]
         [SerializeField] private bool invertBodyVerticalDirection = true;
+        [Tooltip("Prevents any Human Tetris arm pose from also firing a jump. Uses wrists first and elbows when hands leave the camera frame.")]
+        [FormerlySerializedAs("suppressJumpWhenBothArmsRaised")]
+        [SerializeField] private bool suppressJumpWhenHumanTetrisArmPose = true;
+        [SerializeField, Range(0.02f, 0.25f)] private float bothArmsRaisedMargin = 0.06f;
+        [Tooltip("How far a wrist may sit below its shoulder while still counting as a two-arm horizontal Human Tetris pose.")]
+        [SerializeField, Range(0.02f, 0.25f)] private float bothArmsHorizontalTolerance = 0.12f;
 
         [Header("Shoulder Detection Debug (Runtime)")]
         [Tooltip("Current MediaPipe Y coordinate for the player's left shoulder.")]
@@ -95,6 +106,8 @@ namespace ActiveMotion3D.EndlessRunner.Input
         [SerializeField] private float rightShoulderDelta;
         [Tooltip("Agreed vertical movement of both shoulders used for jump/duck detection.")]
         [SerializeField] private float combinedVerticalDelta;
+        [Tooltip("Agreed upward movement of both hips. A positive value is required for a body jump when enabled.")]
+        [SerializeField] private float combinedHipVerticalDelta;
 
         [Header("Three Lane Fallback")]
         [Tooltip("Torso travel, measured in shoulder widths, required to enter a side lane.")]
@@ -112,11 +125,19 @@ namespace ActiveMotion3D.EndlessRunner.Input
         private float calibrationXSum;
         private float calibrationLeftShoulderYSum;
         private float calibrationRightShoulderYSum;
+        private float calibrationLeftHipYSum;
+        private float calibrationRightHipYSum;
         private int calibrationSamplesCollected;
+        private int hipCalibrationSamplesCollected;
         private float neutralLeftShoulderY;
         private float neutralRightShoulderY;
         private float smoothedLeftShoulderY;
         private float smoothedRightShoulderY;
+        private float neutralLeftHipY;
+        private float neutralRightHipY;
+        private float smoothedLeftHipY;
+        private float smoothedRightHipY;
+        private bool hasHipVerticalCalibration;
         private bool bodyVerticalGestureReady;
         private BodyVerticalGesture bodyGestureCandidate = BodyVerticalGesture.None;
         private int bodyGestureCandidateFrames;
@@ -133,6 +154,7 @@ namespace ActiveMotion3D.EndlessRunner.Input
         public float LeftShoulderDelta => leftShoulderDelta;
         public float RightShoulderDelta => rightShoulderDelta;
         public float CombinedVerticalDelta => combinedVerticalDelta;
+        public float CombinedHipVerticalDelta => combinedHipVerticalDelta;
 
         /// <summary>Starts a fresh centre calibration and immediately centres the output.</summary>
         public void RecenterHorizontal()
@@ -144,7 +166,11 @@ namespace ActiveMotion3D.EndlessRunner.Input
             calibrationXSum = 0f;
             calibrationLeftShoulderYSum = 0f;
             calibrationRightShoulderYSum = 0f;
+            calibrationLeftHipYSum = 0f;
+            calibrationRightHipYSum = 0f;
             calibrationSamplesCollected = 0;
+            hipCalibrationSamplesCollected = 0;
+            hasHipVerticalCalibration = false;
             lastProcessedPoseTimestamp = -1f;
             poseMissingTime = 0f;
             desiredLane = 1;
@@ -153,6 +179,7 @@ namespace ActiveMotion3D.EndlessRunner.Input
             leftShoulderDelta = 0f;
             rightShoulderDelta = 0f;
             combinedVerticalDelta = 0f;
+            combinedHipVerticalDelta = 0f;
             CurrentBodyGesture = BodyVerticalGesture.None;
             bodyVerticalGestureReady = false;
             bodyGestureCandidate = BodyVerticalGesture.None;
@@ -191,6 +218,7 @@ namespace ActiveMotion3D.EndlessRunner.Input
 
                 if (gestureStable && handGestureCandidate == HandGesture.PointingUp && lastGesture != HandGesture.PointingUp &&
                     isRightHand && BodyVerticalOffset > -bodyVerticalResetThreshold &&
+                    !IsHumanTetrisArmPose() &&
                     now - lastJumpTime > COOLDOWN)
                 {
                     jumpRequested = true;
@@ -262,6 +290,12 @@ namespace ActiveMotion3D.EndlessRunner.Input
                         calibrationXSum += rawX;
                         calibrationLeftShoulderYSum += leftShoulderY;
                         calibrationRightShoulderYSum += rightShoulderY;
+                        if (hipsReliable)
+                        {
+                            calibrationLeftHipYSum += lm[23].y;
+                            calibrationRightHipYSum += lm[24].y;
+                            hipCalibrationSamplesCollected++;
+                        }
                         calibrationSamplesCollected++;
                         desiredLane = 1;
                         desiredHorizontalPosition = 0f;
@@ -275,6 +309,14 @@ namespace ActiveMotion3D.EndlessRunner.Input
                         neutralRightShoulderY = calibrationRightShoulderYSum / calibrationSamplesCollected;
                         smoothedLeftShoulderY = neutralLeftShoulderY;
                         smoothedRightShoulderY = neutralRightShoulderY;
+                        hasHipVerticalCalibration = hipCalibrationSamplesCollected >= Mathf.Max(1, calibrationFrameCount);
+                        if (hasHipVerticalCalibration)
+                        {
+                            neutralLeftHipY = calibrationLeftHipYSum / hipCalibrationSamplesCollected;
+                            neutralRightHipY = calibrationRightHipYSum / hipCalibrationSamplesCollected;
+                            smoothedLeftHipY = neutralLeftHipY;
+                            smoothedRightHipY = neutralRightHipY;
+                        }
                         bodyVerticalGestureReady = true;
                         hasLaneCalibration = true;
                         return;
@@ -282,7 +324,8 @@ namespace ActiveMotion3D.EndlessRunner.Input
 
                     smoothedTorsoX = Mathf.Lerp(smoothedTorsoX, rawX, laneResponsiveness);
                     float offsetInShoulderWidths = (smoothedTorsoX - neutralTorsoX) / shoulderWidth;
-                    ProcessBodyVerticalGesture(leftShoulderY, rightShoulderY);
+                    ProcessBodyVerticalGesture(leftShoulderY, rightShoulderY,
+                        lm[23].y, lm[24].y, hipsReliable);
 
                     if (horizontalControlMode == HorizontalControlMode.Continuous)
                     {
@@ -332,7 +375,8 @@ namespace ActiveMotion3D.EndlessRunner.Input
             }
         }
 
-        private void ProcessBodyVerticalGesture(float currentLeftShoulderY, float currentRightShoulderY)
+        private void ProcessBodyVerticalGesture(float currentLeftShoulderY, float currentRightShoulderY,
+            float currentLeftHipY, float currentRightHipY, bool hipsReliable)
         {
             if (!enableBodyVerticalGestures)
             {
@@ -368,6 +412,22 @@ namespace ActiveMotion3D.EndlessRunner.Input
 
             BodyVerticalOffset = combinedVerticalDelta;
 
+            combinedHipVerticalDelta = 0f;
+            if (hasHipVerticalCalibration && hipsReliable)
+            {
+                smoothedLeftHipY = Mathf.Lerp(smoothedLeftHipY, currentLeftHipY, bodyVerticalResponsiveness);
+                smoothedRightHipY = Mathf.Lerp(smoothedRightHipY, currentRightHipY, bodyVerticalResponsiveness);
+                float leftHipDelta = neutralLeftHipY - smoothedLeftHipY;
+                float rightHipDelta = neutralRightHipY - smoothedRightHipY;
+                if (invertBodyVerticalDirection)
+                {
+                    leftHipDelta = -leftHipDelta;
+                    rightHipDelta = -rightHipDelta;
+                }
+                if (leftHipDelta > 0f && rightHipDelta > 0f)
+                    combinedHipVerticalDelta = Mathf.Min(leftHipDelta, rightHipDelta);
+            }
+
             if (!bodyVerticalGestureReady)
             {
                 CurrentBodyGesture = BodyVerticalGesture.None;
@@ -381,7 +441,10 @@ namespace ActiveMotion3D.EndlessRunner.Input
             }
 
             BodyVerticalGesture observedGesture = BodyVerticalGesture.None;
-            if (BodyVerticalOffset >= bodyJumpThreshold)
+            bool hipsRiseWithShoulders = hasHipVerticalCalibration && hipsReliable &&
+                                         combinedHipVerticalDelta >= bodyJumpHipThreshold;
+            if (BodyVerticalOffset >= bodyJumpThreshold && !IsHumanTetrisArmPose() &&
+                (!requireHipRiseForBodyJump || hipsRiseWithShoulders))
                 observedGesture = BodyVerticalGesture.Jump;
             else if (BodyVerticalOffset <= -bodyDuckThreshold)
                 observedGesture = BodyVerticalGesture.Duck;
@@ -438,6 +501,64 @@ namespace ActiveMotion3D.EndlessRunner.Input
             }
             bodyGestureCandidate = BodyVerticalGesture.None;
             bodyGestureCandidateFrames = 0;
+        }
+
+        private bool IsHumanTetrisArmPose()
+        {
+            if (!suppressJumpWhenHumanTetrisArmPose) return false;
+
+            MediaPipeManager manager = MediaPipeManager.Instance;
+            PoseLandmark[] landmarks = manager != null ? manager.CurrentLandmarks : null;
+            if (landmarks == null || landmarks.Length < 33 || !manager.PersonDetected)
+                return false;
+
+            const int nose = 0;
+            const int leftShoulder = 11;
+            const int rightShoulder = 12;
+            const int leftElbow = 13;
+            const int rightElbow = 14;
+            const int leftWrist = 15;
+            const int rightWrist = 16;
+            const float minimumShoulderVisibility = 0.12f;
+
+            if (landmarks[leftShoulder].visibility < minimumShoulderVisibility ||
+                landmarks[rightShoulder].visibility < minimumShoulderVisibility)
+                return false;
+
+            float shoulderY = (landmarks[leftShoulder].y + landmarks[rightShoulder].y) * 0.5f;
+            float upwardSign = landmarks[nose].visibility >= minimumShoulderVisibility &&
+                                Mathf.Abs(landmarks[nose].y - shoulderY) >= 0.015f
+                ? Mathf.Sign(landmarks[nose].y - shoulderY)
+                : (invertBodyVerticalDirection ? 1f : -1f);
+
+            float shoulderWidth = Mathf.Max(Mathf.Abs(landmarks[leftShoulder].x - landmarks[rightShoulder].x), 0.08f);
+            return ArmFormsHumanTetrisPose(landmarks, leftShoulder, leftElbow, leftWrist,
+                       shoulderWidth, upwardSign) ||
+                   ArmFormsHumanTetrisPose(landmarks, rightShoulder, rightElbow, rightWrist,
+                       shoulderWidth, upwardSign);
+        }
+
+        private bool ArmFormsHumanTetrisPose(PoseLandmark[] landmarks, int shoulder, int elbow,
+            int wrist, float shoulderWidth, float upwardSign)
+        {
+            // A wrist is ideal, but raised hands commonly leave an upper-body webcam
+            // frame. The shoulder-to-elbow segment is sufficient for a reliable
+            // single-arm V or horizontal-pose safeguard in that situation.
+            bool elbowVisible = landmarks[elbow].visibility >= 0.06f;
+            bool wristVisible = landmarks[wrist].visibility >= 0.08f;
+            if (!elbowVisible && !wristVisible) return false;
+
+            bool JointMatches(int joint, float horizontalThreshold, float raisedThreshold)
+            {
+                float vertical = (landmarks[joint].y - landmarks[shoulder].y) * upwardSign;
+                bool raised = vertical >= raisedThreshold;
+                bool horizontal = Mathf.Abs(landmarks[joint].x - landmarks[shoulder].x) >= horizontalThreshold &&
+                                  vertical >= -bothArmsHorizontalTolerance;
+                return raised || horizontal;
+            }
+
+            return (wristVisible && JointMatches(wrist, shoulderWidth * 0.45f, bothArmsRaisedMargin)) ||
+                   (elbowVisible && JointMatches(elbow, shoulderWidth * 0.20f, bothArmsRaisedMargin * 0.45f));
         }
     }
 }

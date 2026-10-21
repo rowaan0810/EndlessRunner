@@ -247,7 +247,8 @@ namespace ActiveMotion3D.EndlessRunner.Collectibles
                 float otherDy = hand.handCenterY - otherWrist.y;
                 float otherDistance = otherDx * otherDx + otherDy * otherDy;
 
-                // Require a unique nearest arm; ties must not trigger both sides.
+                // Require a unique nearest arm. Equal distances are ambiguous and
+                // must not let one detected hand trigger both left and right targets.
                 if (targetDistance >= otherDistance || targetDistance >= closestDistance) continue;
                 closestDistance = targetDistance;
                 matchedHandY = hand.handCenterY;
@@ -266,7 +267,6 @@ namespace ActiveMotion3D.EndlessRunner.Collectibles
     /// <summary>Short particle burst plus a synthesized impact sound.</summary>
     internal static class PunchHitEffect
     {
-        private static AudioClip hitClip;
 
         public static void Spawn(Vector3 position, Color color)
         {
@@ -299,31 +299,10 @@ namespace ActiveMotion3D.EndlessRunner.Collectibles
                 renderer.material = material;
             }
 
-            AudioSource source = effect.AddComponent<AudioSource>();
-            source.spatialBlend = 0.25f;
-            source.volume = 0.7f;
-            source.pitch = Random.Range(0.95f, 1.08f);
-            source.PlayOneShot(GetHitClip());
+            // Central 2D source keeps left/right targets equally audible and lets
+            // the clip finish independently of the short-lived particle object.
+            if (ActiveMotion3D.EndlessRunner.Core.SfxPlayer.Instance != null) ActiveMotion3D.EndlessRunner.Core.SfxPlayer.Instance.PlayPunch();
             particles.Play();
-        }
-
-        private static AudioClip GetHitClip()
-        {
-            if (hitClip != null) return hitClip;
-            const int sampleRate = 44100;
-            int count = Mathf.CeilToInt(sampleRate * 0.16f);
-            float[] samples = new float[count];
-            for (int i = 0; i < count; i++)
-            {
-                float t = i / (float)sampleRate;
-                float envelope = Mathf.Exp(-22f * t);
-                float tone = Mathf.Sin(2f * Mathf.PI * (720f - 1800f * t) * t);
-                float click = Random.Range(-1f, 1f) * Mathf.Exp(-70f * t);
-                samples[i] = (tone * 0.75f + click * 0.25f) * envelope;
-            }
-            hitClip = AudioClip.Create("PunchTargetHit", count, 1, sampleRate, false);
-            hitClip.SetData(samples, 0);
-            return hitClip;
         }
     }
 }

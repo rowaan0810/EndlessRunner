@@ -8638,10 +8638,6 @@ PrefabInstance:
       propertyPath: m_Name
       value: Big Vegas
       objectReference: {fileID: 0}
-    - target: {fileID: 919132149155446097, guid: ee4eae7050a801e4eb3521db2a44d23b, type: 3}
-      propertyPath: m_IsActive
-      value: 0
-      objectReference: {fileID: 0}
     m_RemovedComponents:
     - {fileID: 5866666021909216657, guid: ee4eae7050a801e4eb3521db2a44d23b, type: 3}
     m_RemovedGameObjects: []
@@ -8957,6 +8953,11 @@ MonoBehaviour:
   duckColliderHeight: 0.5
   duckColliderCenterY: 0.25
   playerCollider: {fileID: 1207170613}
+  feedbackCamera: {fileID: 0}
+  jumpCameraRise: 0.9
+  slideCameraDrop: 1
+  cameraPeakSeconds: 0.8
+  cameraReturnSeconds: 0.8
 --- !u!54 &1207170612
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -10583,7 +10584,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: e5cbf129383fc8341a7e2d3389aef83d, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents:
     - {fileID: 5866666021909216657, guid: e5cbf129383fc8341a7e2d3389aef83d, type: 3}
@@ -12338,12 +12339,25 @@ MonoBehaviour:
   m_GameObject: {fileID: 1836333446}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9b6e829cec8a1bf48b9344218a752f7e, type: 3}
+  m_Script: {fileID: 11500000, guid: f11d8b0aa14f4984abc0d911e7d4c621, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SfxPlayer
-  source: {fileID: 0}
+  m_EditorClassIdentifier: Assembly-CSharp::ActiveMotion3D.EndlessRunner.Core.SfxPlayer
+  source: {fileID: 1836333448}
+  masterVolume: 1
+  normalizeClipLevels: 1
+  targetRms: 0.16
   hitClip: {fileID: 8300000, guid: 6ae4f19597a5adc4a8a9af361f2a492a, type: 3}
+  hitVolume: 1
   coinClip: {fileID: 8300000, guid: 60c1bc04961f80d4b877283ee34469e7, type: 3}
+  coinVolume: 1
+  punchClip: {fileID: 8300000, guid: 60c1bc04961f80d4b877283ee34469e7, type: 3}
+  punchVolume: 1
+  successClip: {fileID: 8300000, guid: a53f197da0f34df7ac9b1249ce4e68b3, type: 3}
+  successVolume: 1
+  jumpClip: {fileID: 8300000, guid: c6e89d07c0aa4a1cb11d5f7fc2058d49, type: 3}
+  jumpVolume: 1.4
+  slideClip: {fileID: 8300000, guid: de04e255338e4d3faf98798c99c7c48f, type: 3}
+  slideVolume: 1
 --- !u!82 &1836333448
 AudioSource:
   m_ObjectHideFlags: 0
@@ -14069,16 +14083,22 @@ MonoBehaviour:
   calibrationFrameCount: 6
   enableBodyVerticalGestures: 1
   bodyJumpThreshold: 0.035
+  requireHipRiseForBodyJump: 0
+  bodyJumpHipThreshold: 0.02
   bodyDuckThreshold: 0.04
   bodyVerticalResetThreshold: 0.025
   bodyVerticalResponsiveness: 0.98
   bodyConfirmationFrames: 2
   invertBodyVerticalDirection: 1
+  suppressJumpWhenHumanTetrisArmPose: 1
+  bothArmsRaisedMargin: 0.06
+  bothArmsHorizontalTolerance: 0.12
   leftShoulderY: 0
   rightShoulderY: 0
   leftShoulderDelta: 0
   rightShoulderDelta: 0
   combinedVerticalDelta: 0
+  combinedHipVerticalDelta: 0
   laneEnterThreshold: 0.16
   laneReturnThreshold: 0.07
   laneResponsiveness: 0.95
@@ -15091,5 +15111,5 @@ SceneRoots:
   - {fileID: 977755559}
   - {fileID: 1435028286}
   - {fileID: 843391509}
-  - {fileID: 1970708422}
   - {fileID: 1836333449}
+  - {fileID: 1970708422}
