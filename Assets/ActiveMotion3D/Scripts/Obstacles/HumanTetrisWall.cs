@@ -199,43 +199,42 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
             lastRightDown = rightDown;
             lastUpwardYSign = upwardYSign;
 
-            return requiredPose switch
+            return MatchesRequiredPose(requiredPose, leftRaised, rightRaised,
+                leftHorizontal, rightHorizontal, leftDown, rightDown);
+        }
+
+        private static bool MatchesRequiredPose(HumanTetrisPose pose,
+            bool mediaPipeLeftRaised, bool mediaPipeRightRaised,
+            bool mediaPipeLeftHorizontal, bool mediaPipeRightHorizontal,
+            bool mediaPipeLeftDown, bool mediaPipeRightDown)
+        {
+            // Match the screen-side silhouette, just like PunchArmInput: in this
+            // webcam pipeline MediaPipe's right arm is the user's perceived left.
+            // LeftArm* is drawn at negative X, so the user follows screen-left.
+            bool leftRaised = mediaPipeRightRaised;
+            bool rightRaised = mediaPipeLeftRaised;
+            bool leftHorizontal = mediaPipeRightHorizontal;
+            bool rightHorizontal = mediaPipeLeftHorizontal;
+            bool leftDown = mediaPipeRightDown;
+            bool rightDown = mediaPipeLeftDown;
+
+            return pose switch
             {
                 // Pose categories are intentionally exclusive. A T pose must never
                 // pass as a V pose, and a two-arm action must never pass a one-arm gate.
                 HumanTetrisPose.BothArmsV => leftRaised && rightRaised &&
                                              !leftHorizontal && !rightHorizontal,
-                // For a one-arm silhouette, accept either anatomical side because a
-                // mirrored selfie and a front-facing figure invite opposite readings.
-                // The other arm must be positively detected in a lowered position;
-                // missing data never counts as "down".
-                HumanTetrisPose.LeftArmHorizontal => IsExactlyOneHorizontal(
-                    leftHorizontal, rightHorizontal, leftDown, rightDown),
-                HumanTetrisPose.RightArmHorizontal => IsExactlyOneHorizontal(
-                    leftHorizontal, rightHorizontal, leftDown, rightDown),
+                // Only the displayed side may match. The opposite arm must be
+                // positively detected as lowered; missing data is not "down".
+                HumanTetrisPose.LeftArmHorizontal => leftHorizontal && !rightHorizontal && rightDown,
+                HumanTetrisPose.RightArmHorizontal => rightHorizontal && !leftHorizontal && leftDown,
                 HumanTetrisPose.BothArmsHorizontal => leftHorizontal && rightHorizontal,
-                HumanTetrisPose.LeftArmRaised => IsExactlyOneRaised(
-                    leftRaised, rightRaised, leftHorizontal, rightHorizontal, leftDown, rightDown),
-                HumanTetrisPose.RightArmRaised => IsExactlyOneRaised(
-                    leftRaised, rightRaised, leftHorizontal, rightHorizontal, leftDown, rightDown),
+                HumanTetrisPose.LeftArmRaised => leftRaised && !leftHorizontal &&
+                    !rightRaised && !rightHorizontal && rightDown,
+                HumanTetrisPose.RightArmRaised => rightRaised && !rightHorizontal &&
+                    !leftRaised && !leftHorizontal && leftDown,
                 _ => false
             };
-        }
-
-        private static bool IsExactlyOneHorizontal(bool leftHorizontal, bool rightHorizontal,
-            bool leftDown, bool rightDown)
-        {
-            bool onlyLeft = leftHorizontal && !rightHorizontal && rightDown;
-            bool onlyRight = rightHorizontal && !leftHorizontal && leftDown;
-            return onlyLeft || onlyRight;
-        }
-
-        private static bool IsExactlyOneRaised(bool leftRaised, bool rightRaised,
-            bool leftHorizontal, bool rightHorizontal, bool leftDown, bool rightDown)
-        {
-            bool onlyLeft = leftRaised && !leftHorizontal && !rightRaised && !rightHorizontal && rightDown;
-            bool onlyRight = rightRaised && !rightHorizontal && !leftRaised && !leftHorizontal && leftDown;
-            return onlyLeft || onlyRight;
         }
 
         private static bool IsArmDown(PoseLandmark[] lm, int shoulder, int elbow, int wrist,

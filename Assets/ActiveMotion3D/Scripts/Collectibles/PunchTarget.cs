@@ -247,9 +247,8 @@ namespace ActiveMotion3D.EndlessRunner.Collectibles
                 float otherDy = hand.handCenterY - otherWrist.y;
                 float otherDistance = otherDx * otherDx + otherDy * otherDy;
 
-                // Each hand belongs only to its nearest arm. This is important
-                // when both hands are continuously visible.
-                if (targetDistance > otherDistance || targetDistance >= closestDistance) continue;
+                // Require a unique nearest arm; ties must not trigger both sides.
+                if (targetDistance >= otherDistance || targetDistance >= closestDistance) continue;
                 closestDistance = targetDistance;
                 matchedHandY = hand.handCenterY;
                 foundMatchingHand = true;
