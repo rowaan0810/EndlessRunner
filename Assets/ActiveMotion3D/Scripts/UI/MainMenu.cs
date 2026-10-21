@@ -312,14 +312,18 @@ namespace ActiveMotion3D.EndlessRunner.UI
             }
         }
 
-        private void CycleCharacter()
+        public void CycleCharacter()
         {
             var charSelector = FindAnyObjectByType<CharacterSelector>();
-            if (charSelector != null)
-            {
-                charSelector.CycleCharacter();
-                UpdateCharacterLabel(charSelector);
-            }
+
+            if (charSelector == null)
+                {
+                    Debug.LogWarning("No CharacterSelector found in scene");
+                    return;
+                }
+            
+            charSelector.CycleCharacter();
+            UpdateCharacterLabel(charSelector);
         }
 
         private void UpdateCharacterLabel(CharacterSelector selector = null)

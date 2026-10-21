@@ -1,5 +1,6 @@
-﻿<Solution>
+<Solution>
   <Project Path="Mediapipe.Runtime.csproj" />
+  <Project Path="Mediapipe.Tests.EditMode.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
 </Solution>
