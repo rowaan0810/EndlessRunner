@@ -16,13 +16,40 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
     public class ObstacleSpawner : MonoBehaviour
     {
         [Header("Spawn Settings")]
+        [Tooltip("Generate jump, duck, and lane-blocking obstacles.")]
+        [SerializeField] private bool spawnObstacles = true;
+        [Tooltip("Generate normal coin lines on the running lanes.")]
+        [SerializeField] private bool spawnCoins = true;
         [SerializeField] private float spawnDistance = 80f;       // How far ahead to spawn
         [SerializeField] private float minInterval = 1.2f;       // Min seconds between obstacles
         [SerializeField] private float maxInterval = 3.0f;       // Max seconds between obstacles
         [SerializeField] private float coinChance = 0.6f;        // Chance to spawn coins between obstacles
 
+        [Header("Human Tetris")]
+        [SerializeField] private bool spawnHumanTetris = true;
+        [Tooltip("First wall appears after this many seconds of play.")]
+        [SerializeField, Min(3f)] private float firstHumanTetrisDelay = 8f;
+        [SerializeField, Min(5f)] private float minHumanTetrisInterval = 12f;
+        [SerializeField, Min(5f)] private float maxHumanTetrisInterval = 18f;
+        [SerializeField, Range(1, 8)] private int humanTetrisPoolSize = 3;
+
+        [Header("High Punch Targets")]
+        [SerializeField] private bool spawnPunchTargets = true;
+        [SerializeField, Range(0f, 1f)] private float punchTargetChance = 0.7f;
+        [SerializeField] private float minPunchTargetInterval = 1.1f;
+        [SerializeField] private float maxPunchTargetInterval = 2.2f;
+        [Tooltip("Left/right boundary position, outside the centres of lanes 1 and 3.")]
+        [SerializeField] private float punchTargetBoundaryX = 4.7f;
+        [SerializeField] private float punchTargetHeight = 2.8f;
+        [Tooltip("How close the box must be to the player before it can turn yellow and be hit. Smaller means closer.")]
+        [SerializeField, Min(1f)] private float punchTargetHitDistance = 10f;
+        [Tooltip("Minimum real time the yellow box remains approachable, compensating for webcam and MediaPipe latency.")]
+        [SerializeField, Range(0.25f, 2f)] private float punchTargetMinimumReactionSeconds = 0.85f;
+        [Tooltip("Enable when the webcam reports vertical pose coordinates in the opposite direction. Matches PoseInput on this camera.")]
+        [SerializeField] private bool invertPunchVerticalDirection = true;
+
         [Header("Lane Settings")]
-        [SerializeField] private float laneWidth = 2.5f;         // Must match PlayerController
+        [SerializeField] private float laneWidth = 3.2f;         // Must match PlayerController
 
         [Header("Obstacle Dimensions")]
         [SerializeField] private float barrierLowHeight = 0.6f;  // Jump over this
@@ -33,15 +60,21 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
         [Header("Pool Settings")]
         [SerializeField] private int obstaclePoolSize = 20;
         [SerializeField] private int coinPoolSize = 40;
+        [SerializeField] private int punchTargetPoolSize = 14;
 
         // Object pools — one per obstacle type for distinct visuals
         private List<Obstacle> poolBarrierLow = new List<Obstacle>();
         private List<Obstacle> poolBarrierHigh = new List<Obstacle>();
         private List<Obstacle> poolBarrierFull = new List<Obstacle>();
         private List<Coin> coinPool = new List<Coin>();
+        private List<PunchTarget> punchTargetPool = new List<PunchTarget>();
+        private List<HumanTetrisWall> humanTetrisPool = new List<HumanTetrisWall>();
 
         private float nextSpawnTime;
         private float nextCoinTime;
+        private float nextPunchTargetTime;
+        private float nextHumanTetrisTime;
+        private PunchTargetSide lastPunchSide = PunchTargetSide.Right;
 
         // Cached shaders for creating materials
         private Shader cachedShader;
@@ -50,6 +83,8 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
         {
             StartCoroutine(WarmPoolsGradually());
             ScheduleNextSpawn();
+            ScheduleNextPunchTarget();
+            nextHumanTetrisTime = Time.time + firstHumanTetrisDelay;
 
             if (GameManager.Instance != null)
             {
@@ -81,28 +116,64 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
                 coinPool.Add(obj.GetComponent<Coin>());
                 yield return null;
             }
+
+            while (punchTargetPool.Count < punchTargetPoolSize)
+            {
+                PunchTarget target = CreatePunchTargetPrefab();
+                target.gameObject.SetActive(false);
+                target.transform.SetParent(transform);
+                punchTargetPool.Add(target);
+                yield return null;
+            }
+
+            while (humanTetrisPool.Count < humanTetrisPoolSize)
+            {
+                HumanTetrisWall wall = CreateHumanTetrisWall();
+                wall.gameObject.SetActive(false);
+                wall.transform.SetParent(transform);
+                humanTetrisPool.Add(wall);
+                yield return null;
+            }
         }
 
         private void Update()
         {
+            // Keep the global raised/not-raised gate current even while no cube
+            // is yellow. A continuously held arm still cannot score later cubes.
+            PunchArmInput.SetInvertVerticalDirection(invertPunchVerticalDirection);
+            PunchArmInput.UpdateState();
+
             if (GameManager.Instance == null || GameManager.Instance.State != GameState.Playing)
                 return;
 
             // Spawn obstacles at intervals
-            if (Time.time >= nextSpawnTime)
+            if (spawnObstacles && Time.time >= nextSpawnTime && IsHumanTetrisPreludeClear())
             {
                 SpawnObstacleGroup();
                 ScheduleNextSpawn();
             }
 
             // Spawn coins periodically
-            if (Time.time >= nextCoinTime)
+            if (spawnCoins && Time.time >= nextCoinTime)
             {
                 if (Random.value < coinChance)
                 {
                     SpawnCoinLine();
                 }
                 nextCoinTime = Time.time + Random.Range(0.8f, 2.0f);
+            }
+
+            if (spawnPunchTargets && Time.time >= nextPunchTargetTime && IsHumanTetrisPreludeClear())
+            {
+                if (Random.value <= punchTargetChance)
+                    SpawnPunchTarget();
+                ScheduleNextPunchTarget();
+            }
+
+            if (spawnHumanTetris && Time.time >= nextHumanTetrisTime)
+            {
+                SpawnHumanTetris();
+                ScheduleNextHumanTetris();
             }
         }
 
@@ -113,6 +184,59 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
             float speedFactor = Mathf.InverseLerp(10f, 30f, speed);
             float interval = Mathf.Lerp(maxInterval, minInterval, speedFactor);
             nextSpawnTime = Time.time + interval;
+        }
+
+        private void ScheduleNextPunchTarget()
+        {
+            float speedProgress = GameSpeed.Instance != null ? GameSpeed.Instance.NormalizedSpeed : 0f;
+            float slowInterval = Random.Range(minPunchTargetInterval, maxPunchTargetInterval);
+            nextPunchTargetTime = Time.time + Mathf.Lerp(slowInterval, minPunchTargetInterval, speedProgress);
+        }
+
+        private void ScheduleNextHumanTetris()
+        {
+            nextHumanTetrisTime = Time.time + Random.Range(minHumanTetrisInterval, maxHumanTetrisInterval);
+        }
+
+        private bool IsHumanTetrisPreludeClear()
+        {
+            // Reserve a few seconds of empty track before the wall. Obstacles that
+            // arrive almost together would make the pose challenge unfair.
+            return !spawnHumanTetris || nextHumanTetrisTime - Time.time > 3f;
+        }
+
+        private void SpawnHumanTetris()
+        {
+            HumanTetrisWall wall = GetPooledHumanTetrisWall();
+            if (wall == null) return;
+
+            // Keep every pose gate centred. With a non-wide-angle webcam the player
+            // must remain near the middle of the image so raised/extended arms stay visible.
+            const int lane = 1;
+            HumanTetrisPose pose = (HumanTetrisPose)Random.Range(0, 6);
+            wall.Setup(new Vector3(0f, 0f, spawnDistance), lane, pose);
+
+            // Keep ordinary obstacles away from the pose gate so the instruction is readable
+            // and the player is never asked to jump or duck while matching the silhouette.
+            float speed = GameSpeed.Instance != null ? GameSpeed.Instance.Current : 10f;
+            nextSpawnTime = Mathf.Max(nextSpawnTime, Time.time + spawnDistance / Mathf.Max(speed, 1f) + 1.5f);
+            nextPunchTargetTime = Mathf.Max(nextPunchTargetTime,
+                Time.time + spawnDistance / Mathf.Max(speed, 1f) + 1.5f);
+        }
+
+        private void SpawnPunchTarget()
+        {
+            PunchTarget target = GetPooledPunchTarget();
+            if (target == null) return;
+
+            // Usually alternate sides so the exercise naturally uses both arms.
+            PunchTargetSide side = Random.value < 0.75f
+                ? (lastPunchSide == PunchTargetSide.Left ? PunchTargetSide.Right : PunchTargetSide.Left)
+                : lastPunchSide;
+            lastPunchSide = side;
+            float x = side == PunchTargetSide.Left ? -punchTargetBoundaryX : punchTargetBoundaryX;
+            target.Setup(new Vector3(x, punchTargetHeight, spawnDistance), side,
+                punchTargetHitDistance, punchTargetMinimumReactionSeconds);
         }
 
         /// <summary>
@@ -300,6 +424,64 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
             Coin newCoin = obj.GetComponent<Coin>();
             coinPool.Add(newCoin);
             return newCoin;
+        }
+
+        private PunchTarget GetPooledPunchTarget()
+        {
+            foreach (PunchTarget target in punchTargetPool)
+            {
+                if (!target.gameObject.activeInHierarchy) return target;
+            }
+
+            PunchTarget newTarget = CreatePunchTargetPrefab();
+            newTarget.gameObject.SetActive(false);
+            newTarget.transform.SetParent(transform);
+            punchTargetPool.Add(newTarget);
+            return newTarget;
+        }
+
+        private HumanTetrisWall CreateHumanTetrisWall()
+        {
+            GameObject root = new GameObject("HumanTetrisWall");
+            return root.AddComponent<HumanTetrisWall>();
+        }
+
+        private HumanTetrisWall GetPooledHumanTetrisWall()
+        {
+            foreach (HumanTetrisWall wall in humanTetrisPool)
+            {
+                if (!wall.gameObject.activeInHierarchy) return wall;
+            }
+
+            HumanTetrisWall created = CreateHumanTetrisWall();
+            created.gameObject.SetActive(false);
+            created.transform.SetParent(transform);
+            humanTetrisPool.Add(created);
+            return created;
+        }
+
+        #endregion
+
+        #region Punch Target Builder
+
+        private PunchTarget CreatePunchTargetPrefab()
+        {
+            GameObject root = new GameObject("PunchTarget");
+
+            GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            cube.name = "TargetCube";
+            cube.transform.SetParent(root.transform, false);
+            cube.transform.localScale = Vector3.one * 1.15f;
+            DestroyCollider(cube);
+            SetEmissiveMaterial(cube.GetComponent<Renderer>(), new Color(0.92f, 0.95f, 1f), 0.15f);
+
+            GameObject core = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            core.name = "InnerCore";
+            core.transform.SetParent(root.transform, false);
+            core.transform.localScale = Vector3.one * 0.68f;
+            DestroyCollider(core);
+            SetEmissiveMaterial(core.GetComponent<Renderer>(), new Color(0.1f, 0.85f, 1f), 2.5f);
+            return root.AddComponent<PunchTarget>();
         }
 
         #endregion
@@ -700,9 +882,20 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
             {
                 if (coin != null) coin.gameObject.SetActive(false);
             }
+            foreach (var target in punchTargetPool)
+            {
+                if (target != null) target.gameObject.SetActive(false);
+            }
+            foreach (var wall in humanTetrisPool)
+            {
+                if (wall != null) wall.gameObject.SetActive(false);
+            }
 
             nextSpawnTime = Time.time + 2f; // Brief grace period on restart
             nextCoinTime = Time.time + 1f;
+            nextPunchTargetTime = Time.time + 1.5f;
+            nextHumanTetrisTime = Time.time + firstHumanTetrisDelay;
+            lastPunchSide = PunchTargetSide.Right;
         }
     }
 }

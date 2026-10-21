@@ -15,7 +15,7 @@ namespace ActiveMotion3D.EndlessRunner.Player
     public class PlayerController : MonoBehaviour
     {
         [Header("Lane Settings")]
-        [SerializeField] private float laneWidth = 2.5f;         // Distance between lanes
+        [SerializeField] private float laneWidth = 3.2f;         // Distance between lanes
         [SerializeField] private float laneSwitchSpeed = 24f;
         [SerializeField] private float laneSwitchSmoothTime = 0.045f;
 
@@ -112,7 +112,7 @@ namespace ActiveMotion3D.EndlessRunner.Player
             if (input.DesiredLane != currentLane)
             {
                 currentLane = input.DesiredLane;
-                targetX = (currentLane - 1) * laneWidth; // Lane 0=-2.5, 1=0, 2=2.5
+                targetX = (currentLane - 1) * laneWidth;
             }
         }
 

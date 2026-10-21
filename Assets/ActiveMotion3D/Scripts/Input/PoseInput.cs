@@ -60,7 +60,7 @@ namespace ActiveMotion3D.EndlessRunner.Input
         [Header("Horizontal Movement")]
         [SerializeField] private HorizontalControlMode horizontalControlMode = HorizontalControlMode.Continuous;
         [Tooltip("World units travelled for one shoulder-width of body movement.")]
-        [SerializeField, Range(0.5f, 8f)] private float horizontalSensitivity = 4.5f;
+        [SerializeField, Range(0.5f, 8f)] private float horizontalSensitivity = 5.6f;
         [Tooltip("Maximum left/right position on the running track.")]
         [SerializeField, Range(1f, 5f)] private float horizontalTrackLimit = 3.2f;
         [Tooltip("Natural body sway inside this area does not move the character.")]

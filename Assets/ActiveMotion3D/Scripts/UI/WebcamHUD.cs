@@ -27,7 +27,17 @@ namespace ActiveMotion3D.EndlessRunner.UI
         // Skeleton drawing
         [SerializeField] private List<Image> landmarkDots = new List<Image>();
         [SerializeField] private List<Image> boneLine = new List<Image>();
+        private readonly List<Image> poseLandmarkDots = new List<Image>();
+        private readonly List<Image> poseBoneLines = new List<Image>();
         private const int MAX_LANDMARKS = 21;
+
+        // Upper-body Pose Landmarker points used by Human Tetris.
+        private static readonly int[] POSE_POINTS = { 0, 11, 12, 13, 14, 15, 16, 23, 24 };
+        private static readonly int[,] POSE_BONES = {
+            {0,11}, {0,12}, {11,12},
+            {11,13}, {13,15}, {12,14}, {14,16},
+            {11,23}, {12,24}, {23,24}
+        };
 
         // Hand skeleton connections (pairs of landmark indices)
         private static readonly int[,] BONES = new int[,] {
@@ -54,6 +64,7 @@ namespace ActiveMotion3D.EndlessRunner.UI
                 Debug.LogError("WebcamHUD is not authored in the scene. Run Tools > Active Motion 3D > Build Main Scene.", this);
 
             ApplyPreviewLayout();
+            EnsurePoseSkeleton();
         }
 
 #if UNITY_EDITOR
@@ -116,6 +127,7 @@ namespace ActiveMotion3D.EndlessRunner.UI
 
             // Draw hand skeleton
             DrawSkeleton(hgm);
+            DrawPoseSkeleton(MediaPipeManager.Instance);
 
             // Get gesture info from PoseInput
             var pi = FindAnyObjectByType<PoseInput>();
@@ -218,6 +230,107 @@ namespace ActiveMotion3D.EndlessRunner.UI
                 bone.rectTransform.sizeDelta = new Vector2(len, 2f);
                 bone.rectTransform.localRotation = Quaternion.Euler(0, 0, angle);
             }
+        }
+
+        private void EnsurePoseSkeleton()
+        {
+            if (webcamRect == null || poseLandmarkDots.Count > 0) return;
+
+            GameObject root = new GameObject("PoseSkeleton", typeof(RectTransform));
+            root.transform.SetParent(webcamRect, false);
+            RectTransform rootRect = root.GetComponent<RectTransform>();
+            rootRect.anchorMin = Vector2.zero;
+            rootRect.anchorMax = Vector2.one;
+            rootRect.offsetMin = Vector2.zero;
+            rootRect.offsetMax = Vector2.zero;
+            root.transform.SetAsLastSibling();
+
+            for (int i = 0; i < POSE_BONES.GetLength(0); i++)
+            {
+                GameObject boneObject = new GameObject($"PoseBone_{i}", typeof(RectTransform), typeof(Image));
+                boneObject.transform.SetParent(root.transform, false);
+                RectTransform rect = boneObject.GetComponent<RectTransform>();
+                rect.anchorMin = rect.anchorMax = rect.pivot = Vector2.one * 0.5f;
+                rect.sizeDelta = new Vector2(20f, 4f);
+                Image image = boneObject.GetComponent<Image>();
+                image.color = new Color(1f, 0.25f, 0.85f, 0.9f);
+                image.raycastTarget = false;
+                boneObject.SetActive(false);
+                poseBoneLines.Add(image);
+            }
+
+            for (int i = 0; i < POSE_POINTS.Length; i++)
+            {
+                GameObject dotObject = new GameObject($"PoseDot_{POSE_POINTS[i]}", typeof(RectTransform), typeof(Image));
+                dotObject.transform.SetParent(root.transform, false);
+                RectTransform rect = dotObject.GetComponent<RectTransform>();
+                rect.anchorMin = rect.anchorMax = rect.pivot = Vector2.one * 0.5f;
+                rect.sizeDelta = Vector2.one * 11f;
+                Image image = dotObject.GetComponent<Image>();
+                image.color = new Color(1f, 0.85f, 0.1f, 1f);
+                image.raycastTarget = false;
+                dotObject.SetActive(false);
+                poseLandmarkDots.Add(image);
+            }
+        }
+
+        private void DrawPoseSkeleton(MediaPipeManager manager)
+        {
+            foreach (Image dot in poseLandmarkDots) dot.gameObject.SetActive(false);
+            foreach (Image bone in poseBoneLines) bone.gameObject.SetActive(false);
+
+            PoseLandmark[] landmarks = manager != null ? manager.CurrentLandmarks : null;
+            if (landmarks == null || landmarks.Length < 33 || webcamRect == null) return;
+
+            float width = webcamRect.rect.width;
+            float height = webcamRect.rect.height;
+
+            for (int i = 0; i < POSE_POINTS.Length; i++)
+            {
+                int landmarkIndex = POSE_POINTS[i];
+                PoseLandmark landmark = landmarks[landmarkIndex];
+                if (!IsFinite(landmark.x) || !IsFinite(landmark.y)) continue;
+
+                Image dot = poseLandmarkDots[i];
+                dot.gameObject.SetActive(true);
+                dot.rectTransform.anchoredPosition = PosePoint(landmark, width, height);
+                float alpha = Mathf.Lerp(0.4f, 1f, Mathf.Clamp01(landmark.visibility));
+                dot.color = new Color(1f, 0.85f, 0.1f, alpha);
+            }
+
+            for (int i = 0; i < POSE_BONES.GetLength(0); i++)
+            {
+                int a = POSE_BONES[i, 0];
+                int b = POSE_BONES[i, 1];
+                PoseLandmark pointA = landmarks[a];
+                PoseLandmark pointB = landmarks[b];
+                if (!IsFinite(pointA.x) || !IsFinite(pointA.y) ||
+                    !IsFinite(pointB.x) || !IsFinite(pointB.y)) continue;
+
+                Vector2 start = PosePoint(pointA, width, height);
+                Vector2 end = PosePoint(pointB, width, height);
+                Vector2 delta = end - start;
+                Image bone = poseBoneLines[i];
+                bone.gameObject.SetActive(true);
+                bone.rectTransform.anchoredPosition = (start + end) * 0.5f;
+                bone.rectTransform.sizeDelta = new Vector2(delta.magnitude, 4f);
+                bone.rectTransform.localRotation = Quaternion.Euler(0f, 0f,
+                    Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg);
+            }
+        }
+
+        private static Vector2 PosePoint(PoseLandmark landmark, float width, float height)
+        {
+            // Webcam display is mirrored horizontally. PoseLandmarker coordinates from
+            // this capture pipeline already use the preview's bottom-to-top Y direction,
+            // so do not apply the hand-landmarker Y inversion here.
+            return new Vector2((1f - landmark.x) * width - width * 0.5f,
+                landmark.y * height - height * 0.5f);
+        }
+
+        private static bool IsFinite(float value)
+        {
+            return !float.IsNaN(value) && !float.IsInfinity(value);
         }
 
         private void BuildHUD()

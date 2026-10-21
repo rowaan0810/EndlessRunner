@@ -767,8 +767,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 47290386}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.1736482, y: 0, z: 0, w: 0.9848078}
-  m_LocalPosition: {x: 0, y: 5, z: -8}
+  m_LocalRotation: {x: 0.0871557, y: 0, z: 0, w: 0.9961947}
+  m_LocalPosition: {x: 0, y: 3.4, z: -9}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1141,7 +1141,7 @@ MonoBehaviour:
   poolSize: 8
   immediateSegmentCount: 3
   segmentLength: 20
-  laneWidth: 2.5
+  laneWidth: 3.2
   sideProps: []
   lampProps: []
 --- !u!4 &101380656
@@ -4333,17 +4333,34 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4e97f888cfa64383a771c740bc80cbba, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ActiveMotion3D.EndlessRunner.Obstacles.ObstacleSpawner
+  spawnObstacles: 1
+  spawnCoins: 0
   spawnDistance: 80
   minInterval: 1.2
   maxInterval: 3
   coinChance: 0.6
-  laneWidth: 2.5
+  spawnHumanTetris: 1
+  firstHumanTetrisDelay: 8
+  minHumanTetrisInterval: 12
+  maxHumanTetrisInterval: 18
+  humanTetrisPoolSize: 3
+  spawnPunchTargets: 1
+  punchTargetChance: 0.7
+  minPunchTargetInterval: 1.1
+  maxPunchTargetInterval: 2.2
+  punchTargetBoundaryX: 4.7
+  punchTargetHeight: 2.8
+  punchTargetHitDistance: 10
+  punchTargetMinimumReactionSeconds: 0.85
+  invertPunchVerticalDirection: 1
+  laneWidth: 3.2
   barrierLowHeight: 0.6
   barrierHighY: 1.5
   barrierHighHeight: 1
   barrierFullHeight: 4
   obstaclePoolSize: 20
   coinPoolSize: 40
+  punchTargetPoolSize: 14
 --- !u!4 &472747470
 Transform:
   m_ObjectHideFlags: 0
@@ -8926,7 +8943,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6d4c687567374a7b969b3d892bf2201b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ActiveMotion3D.EndlessRunner.Player.PlayerController
-  laneWidth: 2.5
+  laneWidth: 3.2
   laneSwitchSpeed: 24
   laneSwitchSmoothTime: 0.045
   jumpForce: 6.5
@@ -13767,7 +13784,7 @@ MonoBehaviour:
   logInputEvents: 0
   handGestureHoldSeconds: 0.18
   horizontalControlMode: 1
-  horizontalSensitivity: 4.5
+  horizontalSensitivity: 5.6
   horizontalTrackLimit: 3.2
   continuousDeadZone: 0.015
   bodyLeanGain: 1.25

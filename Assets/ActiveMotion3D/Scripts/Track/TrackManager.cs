@@ -21,7 +21,7 @@ namespace ActiveMotion3D.EndlessRunner.Track
         [SerializeField] private float segmentLength = 20f;
 
         [Header("Lane Visual Settings")]
-        [SerializeField] private float laneWidth = 2.5f;
+        [SerializeField] private float laneWidth = 3.2f;
 
         [Header("Cyberpunk Environment Props")]
         public List<GameObject> sideProps = new List<GameObject>();
@@ -40,6 +40,7 @@ namespace ActiveMotion3D.EndlessRunner.Track
         {
             cameraPosZ = Camera.main != null ? Camera.main.transform.position.z : 0f;
             segments.AddRange(GetComponentsInChildren<TrackSegment>(true));
+            ApplyLaneWidthToAuthoredSegments();
             if (segments.Count == 0)
                 InitializeTrack();
             CreateForegroundFill();
@@ -48,6 +49,39 @@ namespace ActiveMotion3D.EndlessRunner.Track
             {
                 GameManager.Instance.OnGameRestart.AddListener(ResetTrack);
             }
+        }
+
+        private void ApplyLaneWidthToAuthoredSegments()
+        {
+            // GamePlay_Base contains authored pooled segments. Keep their road and
+            // markings synchronized with the same lane width used by movement and
+            // obstacle spawning, instead of requiring every segment to be hand-edited.
+            foreach (TrackSegment segment in segments)
+            {
+                if (segment == null) continue;
+                Transform root = segment.transform;
+                SetLocalScaleX(root.Find("Road"), laneWidth * 3f + 1f);
+                SetLocalPositionX(root.Find("LaneL"), -laneWidth * 0.5f);
+                SetLocalPositionX(root.Find("LaneR"), laneWidth * 0.5f);
+                SetLocalPositionX(root.Find("EdgeL"), -laneWidth * 1.5f);
+                SetLocalPositionX(root.Find("EdgeR"), laneWidth * 1.5f);
+            }
+        }
+
+        private static void SetLocalPositionX(Transform target, float x)
+        {
+            if (target == null) return;
+            Vector3 position = target.localPosition;
+            position.x = x;
+            target.localPosition = position;
+        }
+
+        private static void SetLocalScaleX(Transform target, float x)
+        {
+            if (target == null) return;
+            Vector3 scale = target.localScale;
+            scale.x = x;
+            target.localScale = scale;
         }
 
         private void InitializeTrack()
