@@ -135,6 +135,8 @@ namespace ActiveMotion3D.EndlessRunner.Input
 
         private void StopPoseDetectionIfRunning()
         {
+            // System gestures remain available in every scene, including keyboard mode.
+            if (GlobalGestureController.Instance != null) return;
             if (HandGestureManager.Instance != null)
                 HandGestureManager.Instance.StopDetection();
 

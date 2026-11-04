@@ -192,7 +192,8 @@ namespace ActiveMotion3D.EndlessRunner.Input
         {
             // ── Hand gesture detection (jump/duck) ──
             var hgm = HandGestureManager.Instance;
-            if (hgm != null && hgm.IsRunning && hgm.CurrentHands.Count > 0)
+            if (!GlobalGestureController.PauseGestureInProgress &&
+                hgm != null && hgm.IsRunning && hgm.CurrentHands.Count > 0)
             {
                 var hand = hgm.CurrentHands[0];
                 CurrentGesture = hand.gesture;
