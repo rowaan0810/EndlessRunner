@@ -2,6 +2,7 @@ using UnityEngine;
 using ActiveMotion3D.EndlessRunner.Core;
 using ActiveMotion3D.EndlessRunner.Input;
 using ActiveMotion3D.EndlessRunner.Input.PoseDetection;
+using ActiveMotion3D.EndlessRunner.Environment;
 
 namespace ActiveMotion3D.EndlessRunner.Collectibles
 {
@@ -31,9 +32,12 @@ namespace ActiveMotion3D.EndlessRunner.Collectibles
 
         private Renderer targetRenderer;
         private Material runtimeMaterial;
+        private MoriohPunchVisual authoredVisual;
 
         private void Awake()
         {
+            authoredVisual = GetComponentInChildren<MoriohPunchVisual>();
+            if (authoredVisual != null) return;
             targetRenderer = GetComponentInChildren<Renderer>();
             if (targetRenderer != null)
             {
@@ -94,12 +98,18 @@ namespace ActiveMotion3D.EndlessRunner.Collectibles
             transform.position = position;
             transform.rotation = Quaternion.identity;
             gameObject.SetActive(true);
+            authoredVisual?.Show(Side, IsHighlighted);
         }
 
         private void Collect()
         {
             if (GameManager.Instance != null) GameManager.Instance.AddCoin(1);
-            PunchHitEffect.Spawn(transform.position, activeColor);
+            if (authoredVisual != null)
+            {
+                authoredVisual.PlayHit();
+                ActiveMotion3D.EndlessRunner.Core.SfxPlayer.Instance?.PlayPunch();
+            }
+            else PunchHitEffect.Spawn(transform.position, activeColor);
             gameObject.SetActive(false);
         }
 
@@ -113,6 +123,11 @@ namespace ActiveMotion3D.EndlessRunner.Collectibles
 
         private void ApplyColor(Color color, float emissionStrength)
         {
+            if (authoredVisual != null)
+            {
+                authoredVisual.Show(Side, IsHighlighted);
+                return;
+            }
             if (runtimeMaterial == null) return;
             if (runtimeMaterial.HasProperty("_BaseColor")) runtimeMaterial.SetColor("_BaseColor", color);
             if (runtimeMaterial.HasProperty("_Color")) runtimeMaterial.SetColor("_Color", color);

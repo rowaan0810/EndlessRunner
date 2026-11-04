@@ -16,6 +16,10 @@ namespace ActiveMotion3D.EndlessRunner.Collectibles
         [SerializeField] private float rotationSpeed = 180f; // Degrees per second
         [SerializeField] private float bobAmplitude = 0.15f;
         [SerializeField] private float bobFrequency = 2f;
+        [Tooltip("Optional visual-only pickup burst. Does not enable coin spawning.")]
+        [SerializeField] private GameObject pickupEffect;
+
+        public void ConfigurePickupEffect(GameObject effect) => pickupEffect = effect;
 
         private float startY;
         private float spawnTime;
@@ -63,6 +67,9 @@ namespace ActiveMotion3D.EndlessRunner.Collectibles
 
                 if (ActiveMotion3D.EndlessRunner.Core.SfxPlayer.Instance != null)
                     ActiveMotion3D.EndlessRunner.Core.SfxPlayer.Instance.PlayCoin();
+
+                if (pickupEffect != null)
+                    Instantiate(pickupEffect, transform.position, Quaternion.identity);
 
                 gameObject.SetActive(false);
             }

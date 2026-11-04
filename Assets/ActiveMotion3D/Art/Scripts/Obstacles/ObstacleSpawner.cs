@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using ActiveMotion3D.EndlessRunner.Core;
 using ActiveMotion3D.EndlessRunner.Collectibles;
+using ActiveMotion3D.EndlessRunner.Environment;
 
 namespace ActiveMotion3D.EndlessRunner.Obstacles
 {
@@ -70,6 +71,9 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
         [SerializeField] private GameObject highBarrierVisual;
         [SerializeField] private GameObject fullBarrierVisual;
         [SerializeField] private GameObject coinVisual;
+        [Tooltip("Optional visual-only high-side target; movement and hit rules stay on PunchTarget.")]
+        [SerializeField] private GameObject punchTargetVisual;
+        [SerializeField] private MoriohActivityArt activityArt;
 
         // Object pools — one per obstacle type for distinct visuals
         private List<Obstacle> poolBarrierLow = new List<Obstacle>();
@@ -452,7 +456,9 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
         private HumanTetrisWall CreateHumanTetrisWall()
         {
             GameObject root = new GameObject("HumanTetrisWall");
-            return root.AddComponent<HumanTetrisWall>();
+            HumanTetrisWall wall = root.AddComponent<HumanTetrisWall>();
+            wall.ConfigureArt(activityArt);
+            return wall;
         }
 
         private HumanTetrisWall GetPooledHumanTetrisWall()
@@ -476,6 +482,12 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
         private PunchTarget CreatePunchTargetPrefab()
         {
             GameObject root = new GameObject("PunchTarget");
+
+            if (punchTargetVisual != null)
+            {
+                Instantiate(punchTargetVisual, root.transform, false);
+                return root.AddComponent<PunchTarget>();
+            }
 
             GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
             cube.name = "TargetCube";
@@ -727,6 +739,7 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
         {
             GameObject obj = new GameObject("Coin");
             Coin coin = obj.AddComponent<Coin>();
+            if (activityArt != null) coin.ConfigurePickupEffect(activityArt.coinPickupEffect);
 
             if (coinVisual != null)
             {

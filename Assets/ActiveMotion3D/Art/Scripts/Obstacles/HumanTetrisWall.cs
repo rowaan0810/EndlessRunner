@@ -6,6 +6,7 @@ using ActiveMotion3D.EndlessRunner.Core;
 using ActiveMotion3D.EndlessRunner.Input;
 using ActiveMotion3D.EndlessRunner.Input.PoseDetection;
 using ActiveMotion3D.EndlessRunner.Player;
+using ActiveMotion3D.EndlessRunner.Environment;
 
 namespace ActiveMotion3D.EndlessRunner.Obstacles
 {
@@ -55,6 +56,9 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
         [SerializeField, Range(0.8f, 2.5f)] private float silhouetteScale = 1.8f;
         [Tooltip("Vertical placement of the short pose instruction on the gate.")]
         [SerializeField, Range(0.5f, 6.4f)] private float instructionLabelHeight = 6f;
+        [SerializeField] private MoriohActivityArt activityArt;
+
+        public void ConfigureArt(MoriohActivityArt art) => activityArt = art;
 
         private readonly List<Renderer> silhouetteRenderers = new List<Renderer>();
         private HumanTetrisPose requiredPose;
@@ -64,6 +68,7 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
         private Material waitingMaterial;
         private Material readyMaterial;
         private TextMesh instructionText;
+        private TextMesh statusText;
         private bool lastLeftRaised;
         private bool lastRightRaised;
         private bool lastLeftHorizontal;
@@ -338,20 +343,29 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
 
         private void BuildVisuals()
         {
-            waitingMaterial = CreateMaterial(new Color(1f, 0.08f, 0.7f), 4f);
-            readyMaterial = CreateMaterial(new Color(0.1f, 1f, 0.35f), 5f);
-            Material wallMaterial = CreateMaterial(new Color(0.035f, 0.055f, 0.11f), 0.2f);
-            Material frameMaterial = CreateMaterial(new Color(0f, 0.75f, 1f), 3f);
-            Material holeMaterial = CreateMaterial(new Color(0.005f, 0.008f, 0.018f), 0f);
+            waitingMaterial = activityArt != null && activityArt.waitingSilhouette != null
+                ? activityArt.waitingSilhouette : CreateMaterial(new Color(1f, 0.08f, 0.7f), 4f);
+            readyMaterial = activityArt != null && activityArt.readySilhouette != null
+                ? activityArt.readySilhouette : CreateMaterial(new Color(0.1f, 1f, 0.35f), 5f);
+            Material holeMaterial = activityArt != null && activityArt.openingBacking != null
+                ? activityArt.openingBacking : CreateMaterial(new Color(0.005f, 0.008f, 0.018f), 0f);
+            if (activityArt != null && activityArt.gateDecoration != null)
+                Instantiate(activityArt.gateDecoration, transform, false);
+            else
+            {
+                Material wallMaterial = CreateMaterial(new Color(0.035f, 0.055f, 0.11f), 0.2f);
+                Material frameMaterial = CreateMaterial(new Color(0f, 0.75f, 1f), 3f);
 
-            CreateCube("Wall", transform, new Vector3(0f, 3.3f, 0f), new Vector3(10.6f, 6.6f, 0.45f), wallMaterial);
-            CreateCube("TopFrame", transform, new Vector3(0f, 6.65f, -0.02f), new Vector3(10.85f, 0.16f, 0.58f), frameMaterial);
-            CreateCube("BottomFrame", transform, new Vector3(0f, 0.08f, -0.02f), new Vector3(10.85f, 0.16f, 0.58f), frameMaterial);
-            CreateCube("LeftFrame", transform, new Vector3(-5.35f, 3.35f, -0.02f), new Vector3(0.16f, 6.7f, 0.58f), frameMaterial);
-            CreateCube("RightFrame", transform, new Vector3(5.35f, 3.35f, -0.02f), new Vector3(0.16f, 6.7f, 0.58f), frameMaterial);
+                CreateCube("Wall", transform, new Vector3(0f, 3.3f, 0f), new Vector3(10.6f, 6.6f, 0.45f), wallMaterial);
+                CreateCube("TopFrame", transform, new Vector3(0f, 6.65f, -0.02f), new Vector3(10.85f, 0.16f, 0.58f), frameMaterial);
+                CreateCube("BottomFrame", transform, new Vector3(0f, 0.08f, -0.02f), new Vector3(10.85f, 0.16f, 0.58f), frameMaterial);
+                CreateCube("LeftFrame", transform, new Vector3(-5.35f, 3.35f, -0.02f), new Vector3(0.16f, 6.7f, 0.58f), frameMaterial);
+                CreateCube("RightFrame", transform, new Vector3(5.35f, 3.35f, -0.02f), new Vector3(0.16f, 6.7f, 0.58f), frameMaterial);
+            }
 
             GameObject opening = CreateCube("TargetOpening", transform, new Vector3(0f, 3.15f, -0.25f),
-                new Vector3(4.5f, 6.15f, 0.05f), holeMaterial);
+                activityArt != null ? new Vector3(activityArt.backingSize.x, activityArt.backingSize.y, .05f)
+                    : new Vector3(4.5f, 6.15f, 0.05f), holeMaterial);
 
             GameObject figure = new GameObject("PoseSilhouette");
             figure.transform.SetParent(transform, false);
@@ -401,6 +415,18 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
             instructionText.characterSize = 0.2f;
             instructionText.fontSize = 48;
             instructionText.color = new Color(0.2f, 0.95f, 1f);
+            if (activityArt != null)
+            {
+                StyleLabel(instructionText, activityArt.instructionCharacterSize);
+                GameObject status = new GameObject("PoseStatus", typeof(TextMesh));
+                status.transform.SetParent(transform, false);
+                status.transform.localPosition = activityArt.statusPosition;
+                statusText = status.GetComponent<TextMesh>();
+                statusText.anchor = TextAnchor.MiddleCenter;
+                statusText.alignment = TextAlignment.Center;
+                statusText.fontSize = 48;
+                StyleLabel(statusText, activityArt.statusCharacterSize);
+            }
 
             BoxCollider trigger = gameObject.AddComponent<BoxCollider>();
             trigger.isTrigger = true;
@@ -454,6 +480,9 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
             SetLimb(figure.Find("RightUpperArm"), shoulderR, rightElbow);
             SetLimb(figure.Find("RightForearm"), rightElbow, rightWrist);
             instructionText.text = PoseLabel(requiredPose);
+            if (activityArt != null && activityArt.poseLabels != null &&
+                (int)requiredPose < activityArt.poseLabels.Length)
+                instructionText.text = activityArt.poseLabels[(int)requiredPose];
         }
 
         private void SetSilhouetteReady(bool ready)
@@ -466,7 +495,23 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
             foreach (Renderer renderer in silhouetteRenderers)
                 renderer.sharedMaterial = targetMaterial;
             if (instructionText != null)
-                instructionText.color = ready ? new Color(0.1f, 1f, 0.35f) : new Color(0.2f, 0.95f, 1f);
+                instructionText.color = activityArt != null
+                    ? ready ? activityArt.readyColor : activityArt.instructionColor
+                    : ready ? new Color(0.1f, 1f, 0.35f) : new Color(0.2f, 0.95f, 1f);
+            if (statusText != null && activityArt != null)
+            {
+                statusText.text = ready ? activityArt.readyLabel : activityArt.waitingLabel;
+                statusText.color = ready ? activityArt.readyColor : activityArt.instructionColor;
+            }
+        }
+
+        private void StyleLabel(TextMesh text, float size)
+        {
+            text.characterSize = size;
+            text.color = activityArt.instructionColor;
+            if (activityArt.instructionFont == null) return;
+            text.font = activityArt.instructionFont;
+            text.GetComponent<MeshRenderer>().sharedMaterial = text.font.material;
         }
 
         private void AddLimb(Transform parent, string name, Vector3 start, Vector3 end, float ignoredLength, float width)

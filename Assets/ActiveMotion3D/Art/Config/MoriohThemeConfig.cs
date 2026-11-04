@@ -19,6 +19,17 @@ namespace ActiveMotion3D.EndlessRunner.Environment
         public GameObject fullBarrierVisual;
         public GameObject coinVisual;
 
+        [Header("Optional activity artwork")]
+        public GameObject punchTargetVisual;
+        public MoriohActivityArt activityArt;
+
+        [Header("Cloud sky and continuous distance")]
+        public Material skyboxMaterial;
+        public GameObject horizonPrefab;
+        public Vector3 horizonOffset;
+        public Vector3 horizonScale = Vector3.one;
+        public bool horizonFollowsCameraXZ = true;
+
         [Header("Built-in pipeline palette")]
         public Material[] palette;
 

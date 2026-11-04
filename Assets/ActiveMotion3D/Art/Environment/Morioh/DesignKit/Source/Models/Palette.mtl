@@ -1,0 +1,127 @@
+newmtl Ink
+Kd 0.1922 0.1529 0.2510
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+Ns 8
+d 1
+newmtl Cream
+Kd 0.9608 0.8863 0.7294
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+Ns 8
+d 1
+newmtl Mint
+Kd 0.6235 0.8118 0.7059
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+Ns 8
+d 1
+newmtl Peach
+Kd 0.9255 0.6667 0.6314
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+Ns 8
+d 1
+newmtl Lilac
+Kd 0.7176 0.6392 0.8235
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+Ns 8
+d 1
+newmtl Roof
+Kd 0.3647 0.3176 0.5098
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+Ns 8
+d 1
+newmtl Glass
+Kd 0.3294 0.5608 0.6078
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+Ns 8
+d 1
+newmtl Wood
+Kd 0.3843 0.2588 0.3216
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+Ns 8
+d 1
+newmtl Gold
+Kd 0.9098 0.7490 0.2980
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+Ns 8
+d 1
+newmtl Leaf
+Kd 0.5529 0.3059 0.6784
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+Ns 8
+d 1
+newmtl Blossom
+Kd 0.7882 0.5176 0.8039
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+Ns 8
+d 1
+newmtl Road
+Kd 0.2941 0.2863 0.3451
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+Ns 8
+d 1
+newmtl Paving
+Kd 0.7490 0.7137 0.7608
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+Ns 8
+d 1
+newmtl White
+Kd 0.9686 0.9490 0.8471
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+Ns 8
+d 1
+newmtl Red
+Kd 0.7569 0.2863 0.4353
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+Ns 8
+d 1
+newmtl FarHill
+Kd 0.5686 0.5373 0.6588
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+Ns 8
+d 1
+newmtl NearHill
+Kd 0.4431 0.4353 0.5686
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+Ns 8
+d 1
+newmtl Town
+Kd 0.4196 0.3882 0.5333
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+Ns 8
+d 1
+newmtl Sign
+Kd 1.0000 1.0000 1.0000
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+Ns 8
+d 1
+map_Kd ../Textures/NeighborhoodSigns.png
+newmtl Metal
+Kd 0.3804 0.4235 0.4902
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+Ns 8
+d 1
+newmtl DistantGround
+Kd 0.6588 0.5882 0.7098
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+Ns 8
+d 1

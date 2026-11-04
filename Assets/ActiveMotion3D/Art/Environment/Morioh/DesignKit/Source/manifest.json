@@ -1,0 +1,339 @@
+{
+  "units": "metres",
+  "facadeForward": "-Z",
+  "models": [
+    {
+      "name": "HippedRoofResidence",
+      "triangles": 1774,
+      "materialSlots": 8
+    },
+    {
+      "name": "SplitLevelResidence",
+      "triangles": 1120,
+      "materialSlots": 8
+    },
+    {
+      "name": "NijiConvenience",
+      "triangles": 532,
+      "materialSlots": 7
+    },
+    {
+      "name": "SumireCafe",
+      "triangles": 990,
+      "materialSlots": 9
+    },
+    {
+      "name": "HoshiBakery",
+      "triangles": 2118,
+      "materialSlots": 9
+    },
+    {
+      "name": "YunagiRadio",
+      "triangles": 1208,
+      "materialSlots": 7
+    },
+    {
+      "name": "MoriohGeneralStore",
+      "triangles": 1328,
+      "materialSlots": 8
+    },
+    {
+      "name": "BooksAndRecords",
+      "triangles": 1088,
+      "materialSlots": 9
+    },
+    {
+      "name": "StationKiosk",
+      "triangles": 416,
+      "materialSlots": 7
+    },
+    {
+      "name": "ClockLandmark",
+      "triangles": 680,
+      "materialSlots": 7
+    },
+    {
+      "name": "PurpleFlowerTree",
+      "triangles": 1108,
+      "materialSlots": 3
+    },
+    {
+      "name": "NeighborhoodBicycle",
+      "triangles": 1144,
+      "materialSlots": 5
+    },
+    {
+      "name": "VendingMachine",
+      "triangles": 192,
+      "materialSlots": 6
+    },
+    {
+      "name": "FlowerPlanter",
+      "triangles": 524,
+      "materialSlots": 3
+    },
+    {
+      "name": "PostBox",
+      "triangles": 50,
+      "materialSlots": 3
+    },
+    {
+      "name": "UtilityPole",
+      "triangles": 192,
+      "materialSlots": 3
+    },
+    {
+      "name": "StreetLamp",
+      "triangles": 52,
+      "materialSlots": 3
+    },
+    {
+      "name": "StreetBase20m",
+      "triangles": 1104,
+      "materialSlots": 7
+    },
+    {
+      "name": "OverheadWireSpan20m",
+      "triangles": 480,
+      "materialSlots": 1
+    },
+    {
+      "name": "GuardRail",
+      "triangles": 100,
+      "materialSlots": 1
+    },
+    {
+      "name": "RouteMarker",
+      "triangles": 34,
+      "materialSlots": 3
+    },
+    {
+      "name": "NeighborhoodBench",
+      "triangles": 96,
+      "materialSlots": 2
+    },
+    {
+      "name": "ZebraCrossing",
+      "triangles": 144,
+      "materialSlots": 1
+    },
+    {
+      "name": "SideStreetApron",
+      "triangles": 36,
+      "materialSlots": 2
+    },
+    {
+      "name": "ClockPlazaPaving",
+      "triangles": 300,
+      "materialSlots": 2
+    },
+    {
+      "name": "JumpPromenadeRail",
+      "triangles": 110,
+      "materialSlots": 4
+    },
+    {
+      "name": "DuckShopCanopy",
+      "triangles": 122,
+      "materialSlots": 5
+    },
+    {
+      "name": "DodgeDeliveryScreen",
+      "triangles": 122,
+      "materialSlots": 4
+    },
+    {
+      "name": "MoriohCrestCoin",
+      "triangles": 344,
+      "materialSlots": 3
+    },
+    {
+      "name": "HighSideCrest",
+      "triangles": 292,
+      "materialSlots": 4
+    },
+    {
+      "name": "PoseGateFrame",
+      "triangles": 156,
+      "materialSlots": 5
+    },
+    {
+      "name": "ContinuousHorizon",
+      "triangles": 1484,
+      "materialSlots": 4
+    }
+  ],
+  "palette": {
+    "Ink": [
+      49,
+      39,
+      64
+    ],
+    "Cream": [
+      245,
+      226,
+      186
+    ],
+    "Mint": [
+      159,
+      207,
+      180
+    ],
+    "Peach": [
+      236,
+      170,
+      161
+    ],
+    "Lilac": [
+      183,
+      163,
+      210
+    ],
+    "Roof": [
+      93,
+      81,
+      130
+    ],
+    "Glass": [
+      84,
+      143,
+      155
+    ],
+    "Wood": [
+      98,
+      66,
+      82
+    ],
+    "Gold": [
+      232,
+      191,
+      76
+    ],
+    "Leaf": [
+      141,
+      78,
+      173
+    ],
+    "Blossom": [
+      201,
+      132,
+      205
+    ],
+    "Road": [
+      75,
+      73,
+      88
+    ],
+    "Paving": [
+      191,
+      182,
+      194
+    ],
+    "White": [
+      247,
+      242,
+      216
+    ],
+    "Red": [
+      193,
+      73,
+      111
+    ],
+    "FarHill": [
+      145,
+      137,
+      168
+    ],
+    "NearHill": [
+      113,
+      111,
+      145
+    ],
+    "Town": [
+      107,
+      99,
+      136
+    ],
+    "Sign": [
+      255,
+      255,
+      255
+    ],
+    "Metal": [
+      97,
+      108,
+      125
+    ],
+    "DistantGround": [
+      168,
+      150,
+      181
+    ]
+  },
+  "signs": [
+    [
+      "杜王町",
+      "MORIOH / ROUTE 04"
+    ],
+    [
+      "虹マート",
+      "NIJI MART"
+    ],
+    [
+      "すみれ喫茶",
+      "SUMIRE CAFE"
+    ],
+    [
+      "星のパン",
+      "HOSHI BAKERY"
+    ],
+    [
+      "杜王商店",
+      "MORIOH GENERAL STORE"
+    ],
+    [
+      "夕凪ラジオ",
+      "YUNAGI RADIO"
+    ],
+    [
+      "杜王駅",
+      "MORIOH STATION"
+    ],
+    [
+      "花の小道",
+      "FLOWER WALK"
+    ],
+    [
+      "とびこえ",
+      "JUMP"
+    ],
+    [
+      "くぐって",
+      "DUCK"
+    ],
+    [
+      "よけて",
+      "CHANGE LANE"
+    ],
+    [
+      "ポーズ",
+      "MATCH THE POSE"
+    ],
+    [
+      "04",
+      "MORIOH"
+    ],
+    [
+      "本と音",
+      "BOOKS & RECORDS"
+    ],
+    [
+      "ゆうびん",
+      "POST"
+    ],
+    [
+      "ひだり / みぎ",
+      "LEFT / RIGHT"
+    ]
+  ]
+}

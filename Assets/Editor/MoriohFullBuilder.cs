@@ -91,8 +91,10 @@ public static class MoriohFullBuilder
             RenderSettings.ambientGroundColor = config.ambientGround;
             GameObject cameraRoot = FindRoot(scene, "Main Camera");
             Camera camera = cameraRoot.GetComponent<Camera>();
-            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.clearFlags = config.skyboxMaterial != null ? CameraClearFlags.Skybox : CameraClearFlags.SolidColor;
             camera.backgroundColor = config.cameraBackground;
+            RenderSettings.skybox = config.skyboxMaterial;
+            ApplyHorizon(scene, config, camera);
             Light sun = FindRoot(scene, "Directional Light").GetComponent<Light>();
             sun.color = config.sunColor;
             sun.intensity = config.sunIntensity;
@@ -138,6 +140,8 @@ public static class MoriohFullBuilder
             SetVisual(serialized, "highBarrierVisual", config.highBarrierVisual);
             SetVisual(serialized, "fullBarrierVisual", config.fullBarrierVisual);
             SetVisual(serialized, "coinVisual", config.coinVisual);
+            SetVisual(serialized, "punchTargetVisual", config.punchTargetVisual);
+            SetVisual(serialized, "activityArt", config.activityArt);
             serialized.ApplyModifiedPropertiesWithoutUndo();
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
@@ -352,11 +356,39 @@ public static class MoriohFullBuilder
         throw new InvalidOperationException("Missing scene root: " + name);
     }
 
-    private static void SetVisual(SerializedObject serialized, string name, GameObject prefab)
+    private static void SetVisual(SerializedObject serialized, string name, UnityEngine.Object prefab)
     {
         SerializedProperty field = serialized.FindProperty(name);
         if (field == null) throw new InvalidOperationException("Missing spawner field: " + name);
         field.objectReferenceValue = prefab;
+    }
+
+    private static void ApplyHorizon(Scene scene, MoriohThemeConfig config, Camera camera)
+    {
+        GameObject current = null;
+        foreach (GameObject root in scene.GetRootGameObjects())
+            if (root.name == "Morioh_Horizon") current = root;
+        if (config.horizonPrefab == null)
+        {
+            if (current != null) UnityEngine.Object.DestroyImmediate(current);
+            return;
+        }
+        if (current != null && PrefabUtility.GetCorrespondingObjectFromSource(current) != config.horizonPrefab)
+        {
+            UnityEngine.Object.DestroyImmediate(current);
+            current = null;
+        }
+        if (current == null) current = (GameObject)PrefabUtility.InstantiatePrefab(config.horizonPrefab, scene);
+        current.name = "Morioh_Horizon";
+        current.transform.position = config.horizonOffset;
+        current.transform.localScale = config.horizonScale;
+        MoriohHorizonFollower follower = current.GetComponent<MoriohHorizonFollower>();
+        if (follower != null)
+        {
+            follower.target = camera.transform;
+            follower.offset = config.horizonOffset;
+            follower.followHorizontalCameraPosition = config.horizonFollowsCameraXZ;
+        }
     }
 
     private static void EnsureFolder(string path)
