@@ -12,7 +12,7 @@ The source models, textures, shaders and authoring commands are present. **The n
 4. Run **Tools → Morioh → Design Kit → 2 - Apply To Full Scene**. This checks the existing 20-unit track and 3.2-unit lanes, creates recovery copies of the Full scene and current theme config, then updates the Full scene's visual children and atmosphere. It reports the exact recovery folder in the Console.
 5. Open `Assets/ActiveMotion3D/Scenes/AM3D_Morioh_Full.unity` if it is not already open. Inspect the four street layouts, cloud sky, horizon and obstacle assets. No build-settings step is needed.
 
-The builder refuses to overwrite an existing generated kit on a second run. If a build stops partway, inspect the reported error and the `Generated` folder before retrying; it does not silently replace partially authored assets. A missing imported material produces a specific error before the scene installation.
+The builder refuses to overwrite a completed generated kit on a second run. If a build stops partway, rerunning command 1 preserves the incomplete `Generated` folder, including its GUIDs, at `Assets/_Recovery/MoriohIncomplete_<timestamp>` and builds a fresh kit. Source textures are explicitly imported as 2D textures before asset creation; the 2:1 panoramas and atlases must not be cubemaps. A missing imported material produces a specific error before the scene installation.
 
 ## What repeats, and why
 
@@ -34,7 +34,7 @@ Each module is 20 units. The visual sequence repeats every 80 units inside the e
 | Whole module layout, model swaps, setbacks, positions, rotations, scales | `Generated/Layouts/*.asset`, then **Rebuild Modules From Edited Layouts** |
 | Individual model scale or nested rendering setup | `Generated/Models/*.prefab` |
 | Shared wall, roof, glass, road, foliage, trim and sign appearance | `Generated/Materials/*.mat` |
-| Muted lavender sky colors, cream cloud tint, sky exposure, cloud rotation and gradient height | `Generated/Materials/LavenderCloudSky.mat` |
+| Muted lavender sky colors, cream cloud tint, sky exposure, cloud rotation/elevation and gradient height | `Generated/Materials/LavenderCloudSky.mat` |
 | Fog, ambient colors, sun color/intensity, horizon offset/scale, visual references | `Generated/MoriohDesignTheme.asset`, then **2 - Apply To Full Scene** |
 | Pose waiting/ready materials, six instruction strings, typography, backing size, status position and colors | `Generated/Activities/MoriohActivityArt.asset` |
 | Target idle/yellow active colors, emission, left/right/hit labels and effect references | Same activity art asset |

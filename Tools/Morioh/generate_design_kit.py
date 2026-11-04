@@ -547,6 +547,9 @@ def main():
         if not meta.exists():
             guid=uuid.uuid5(uuid.NAMESPACE_URL,path.relative_to(ROOT).as_posix()).hex
             meta.write_text(f'fileFormatVersion: 2\nguid: {guid}\n'+('folderAsset: yes\nDefaultImporter:\n  userData:\n  assetBundleName:\n  assetBundleVariant:\n' if path.is_dir() else ''),encoding='utf-8')
+            if path.suffix=='.png':
+                with meta.open('a',encoding='utf-8') as handle:
+                    handle.write('TextureImporter:\n  textureType: 0\n  textureShape: 1\n')
     print(f'Created {len(stats)} models, 3 textures; {sum(s["triangles"] for s in stats):,} total triangles across source library.')
 
 if __name__=='__main__':main()

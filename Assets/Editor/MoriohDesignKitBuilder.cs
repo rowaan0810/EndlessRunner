@@ -30,8 +30,6 @@ public static class MoriohDesignKitBuilder
         RequireEditMode();
         if (AssetDatabase.LoadAssetAtPath<MoriohThemeConfig>(ThemePath) != null)
             throw new InvalidOperationException("Design assets already exist. Edit their layouts/materials, then use Rebuild Modules.");
-        if (Directory.Exists(Generated))
-            throw new InvalidOperationException("Generated folder already exists. Inspect any partial build before retrying.");
         SourceIndex index = JsonUtility.FromJson<SourceIndex>(File.ReadAllText(Source + "/manifest.json"));
         if (index?.models == null || index.models.Length != 32)
             throw new InvalidOperationException("Expected the complete 32-model source kit.");
@@ -42,6 +40,21 @@ public static class MoriohDesignKitBuilder
         Require<Shader>(Kit + "/LavenderCloudSky.shader");
         Require<Shader>(Kit + "/HorizonInk.shader");
         Require<MoriohThemeConfig>(LiveTheme);
+        // A 2:1 image can be imported as a cubemap. This sky shader samples a
+        // 2D panorama; set shape explicitly before any OBJ/material creation.
+        ConfigureTexture("NeighborhoodSigns", false, true);
+        ConfigureTexture("SidewalkPavers", false, false);
+        ConfigureTexture("LavenderCloudPanorama", true, true);
+        if (Directory.Exists(Generated))
+        {
+            // Preserve interrupted builds (and their GUIDs) rather than deleting
+            // or overwriting materials the owner may already have inspected.
+            string recovery = "Assets/_Recovery/MoriohIncomplete_" + DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
+            EnsureFolder("Assets/_Recovery");
+            string moveError = AssetDatabase.MoveAsset(Generated, recovery);
+            if (!string.IsNullOrEmpty(moveError)) throw new IOException(moveError);
+            Debug.Log("Preserved the incomplete design build at " + recovery);
+        }
         foreach (string sub in new[] { "Materials", "Models", "Modules", "Layouts", "Activities" })
             EnsureFolder(Generated + "/" + sub);
 
@@ -237,6 +250,7 @@ public static class MoriohDesignKitBuilder
         TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
         if (importer == null) throw new InvalidOperationException("Import source textures first: " + path);
         importer.textureType = TextureImporterType.Default;
+        importer.textureShape = TextureImporterShape.Texture2D;
         importer.sRGBTexture = true;
         importer.alphaIsTransparency = transparent;
         importer.mipmapEnabled = true;

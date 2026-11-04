@@ -8,6 +8,7 @@ Shader "Morioh/Lavender Cloud Sky"
         _Clouds ("Original cloud panorama", 2D) = "black" {}
         _CloudTint ("Cloud tint", Color) = (1,1,1,1)
         _Rotation ("Cloud rotation degrees", Range(0,360)) = 0
+        _CloudElevation ("Cloud elevation degrees", Range(-30,30)) = 0
         _Exposure ("Exposure", Range(.1,2)) = 1
         _GradientPower ("Gradient height", Range(.1,3)) = .65
     }
@@ -25,7 +26,7 @@ Shader "Morioh/Lavender Cloud Sky"
             struct v2f { float4 vertex : SV_POSITION; float3 direction : TEXCOORD0; };
             sampler2D _Clouds;
             float4 _Zenith, _Horizon, _Ground, _CloudTint;
-            float _Rotation, _Exposure, _GradientPower;
+            float _Rotation, _CloudElevation, _Exposure, _GradientPower;
             v2f vert(appdata v)
             {
                 v2f o; o.vertex = UnityObjectToClipPos(v.vertex); o.direction = v.vertex.xyz; return o;
@@ -34,7 +35,7 @@ Shader "Morioh/Lavender Cloud Sky"
             {
                 float3 d = normalize(i.direction);
                 float2 uv = float2(atan2(d.x,d.z) / 6.2831853 + .5 + _Rotation / 360,
-                                  asin(clamp(d.y,-1,1)) / 3.14159265 + .5);
+                                  saturate(asin(clamp(d.y,-1,1)) / 3.14159265 + .5 - _CloudElevation / 180));
                 float3 sky = lerp(_Horizon.rgb, _Zenith.rgb, pow(saturate(d.y), _GradientPower));
                 sky = lerp(_Ground.rgb, sky, smoothstep(-.08,.02,d.y));
                 float4 cloud = tex2D(_Clouds, uv);
