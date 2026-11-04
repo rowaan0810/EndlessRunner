@@ -313,7 +313,7 @@ TextMesh:
   m_GameObject: {fileID: 1856146336328843243}
   m_Text: ROUTE 4
   m_OffsetZ: 0
-  m_CharacterSize: 0.45
+  m_CharacterSize: 0.15
   m_LineSpacing: 1
   m_Anchor: 4
   m_Alignment: 0
@@ -761,7 +761,7 @@ TextMesh:
   m_GameObject: {fileID: 2489000614916300625}
   m_Text: MORIOH
   m_OffsetZ: 0
-  m_CharacterSize: 0.45
+  m_CharacterSize: 0.15
   m_LineSpacing: 1
   m_Anchor: 4
   m_Alignment: 0
@@ -2109,7 +2109,7 @@ TextMesh:
   m_GameObject: {fileID: 6451430740648252530}
   m_Text: DOWNTOWN
   m_OffsetZ: 0
-  m_CharacterSize: 0.45
+  m_CharacterSize: 0.15
   m_LineSpacing: 1
   m_Anchor: 4
   m_Alignment: 0
@@ -2303,7 +2303,7 @@ TextMesh:
   m_GameObject: {fileID: 6697814066777416553}
   m_Text: ODD HOURS
   m_OffsetZ: 0
-  m_CharacterSize: 0.45
+  m_CharacterSize: 0.15
   m_LineSpacing: 1
   m_Anchor: 4
   m_Alignment: 0
