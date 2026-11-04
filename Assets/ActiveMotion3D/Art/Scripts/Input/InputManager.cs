@@ -125,9 +125,6 @@ namespace ActiveMotion3D.EndlessRunner.Input
 
         private void StartPoseDetection()
         {
-            // The global gesture controller starts pose first, then hands on the
-            // same webcam. Starting both here at once can make both camera opens fail.
-            if (GlobalGestureController.Instance != null) return;
             // Original startup order used by the project before the scene changes.
             if (HandGestureManager.Instance != null && !HandGestureManager.Instance.IsRunning)
                 HandGestureManager.Instance.StartDetection();
@@ -138,8 +135,6 @@ namespace ActiveMotion3D.EndlessRunner.Input
 
         private void StopPoseDetectionIfRunning()
         {
-            // System gestures remain available in every scene, including keyboard mode.
-            if (GlobalGestureController.Instance != null) return;
             if (HandGestureManager.Instance != null)
                 HandGestureManager.Instance.StopDetection();
 

@@ -29,8 +29,6 @@ namespace ActiveMotion3D.EndlessRunner.UI
         [SerializeField] private Text countdownText;
         [SerializeField, Min(1f)] private float countdownDuration = 5f;
         [SerializeField, Range(0.25f, 1f)] private float calibrationLeadTime = 0.5f;
-        [SerializeField, Min(1f)] private float cameraStartupTimeout = 15f;
-        [SerializeField, Min(0f)] private float cameraErrorDisplaySeconds = 2f;
         private InputMode selectedMode = InputMode.Webcam;
         private bool startInProgress;
 
@@ -186,28 +184,15 @@ namespace ActiveMotion3D.EndlessRunner.UI
 
             // Do not spend the countdown while the camera/model is still loading.
             countdownText.text = "CAMERA...";
-            GlobalGestureController.Instance?.RetryDetection();
-            float cameraDeadline = Time.unscaledTime + Mathf.Max(1f, cameraStartupTimeout);
             var poseManager = MediaPipeManager.Instance;
             while (poseManager == null || !poseManager.IsRunning || !poseManager.PersonDetected)
             {
-                bool timedOut = Time.unscaledTime >= cameraDeadline;
-                if (timedOut)
+                if (poseManager != null && poseManager.StatusMessage.StartsWith("ERROR"))
                 {
-                    bool cameraFailed = poseManager != null && poseManager.StatusMessage.StartsWith("ERROR");
-                    countdownText.text = cameraFailed ? "CAMERA ERROR" : "CAMERA TIMEOUT";
-                    yield return new WaitForSecondsRealtime(Mathf.Max(0f, cameraErrorDisplaySeconds));
-                    countdownOverlay.SetActive(false);
-                    SetMenuContentVisible(true);
-                    SetMenuButtonsInteractable(true);
+                    countdownText.text = "CAMERA ERROR";
                     startInProgress = false;
                     yield break;
                 }
-
-                if (poseManager != null && poseManager.IsRunning)
-                    countdownText.text = "STEP INTO CAMERA";
-                else if (poseManager != null && poseManager.StatusMessage.StartsWith("ERROR"))
-                    countdownText.text = "RETRYING CAMERA";
 
                 yield return null;
                 poseManager = MediaPipeManager.Instance;

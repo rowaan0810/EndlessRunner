@@ -334,11 +334,8 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
 
         private void OnDestroy()
         {
-            // Authored scene detectors are discarded when the global detector is
-            // present. Only the active singleton may shut down MediaPipe globals.
-            if (Instance != this) return;
             StopDetection();
-            Instance = null;
+            if (Instance == this) Instance = null;
 
             if (IsGlogInitialized)
             {
