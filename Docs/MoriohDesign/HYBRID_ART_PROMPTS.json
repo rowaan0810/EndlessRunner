@@ -1,0 +1,20 @@
+{
+  "tool": "Built-in image_gen",
+  "assets": [
+    {
+      "key": "sky",
+      "transparent": false,
+      "prompt": "Use case: stylized-concept. Asset type: a painted sky-only panoramic game texture for a Japanese anime town background. Make a wide 2:1 panorama, absolutely NO clouds, NO hills, NO objects, NO text. Beautiful hand-painted muted lavender sky with very subtle horizontal brushwork and fine atmospheric color variation, dusk-less gentle daylight, warm pale lilac near the bottom horizon gradually deepening into dusty violet at the top, restrained creamy rose light near the lower edge. Soft refined anime background painting, not photographic noise, not generic purple fog. Level horizon along bottom, no dark vignette, no sun, no stars. The left and right edges should match for wrapping. This is a production sky texture, not a screenshot or mockup."
+    },
+    {
+      "key": "clouds",
+      "transparent": true,
+      "prompt": "Use case: stylized-concept. Asset type: game sprite atlas on a genuinely transparent background. Landscape canvas, arrange EXACTLY twelve DISTINCT small slender anime clouds in a regular FOUR COLUMN by THREE ROW grid, each cloud fully contained in its own equal-sized rectangular cell, centered horizontally and vertically with generous transparent padding on all sides. NO grid lines, NO labels, NO text, no scenery. Every cloud is a long narrow wisp five to eight times wider than tall, gently irregular tapered ends and a few soft delicate lobes, NOT tall puffy cumulus, not oval discs, not balls, no giant connected cloud bank. Beautiful hand-painted Japanese anime background art: warm ivory/white sunlit tops, pale desaturated blue-violet undersides, subtle internal contour and brushwork, delicately inked edges in faint lavender. Vary silhouettes: some broken trailing wisps, some fine layered streaks, some little connected tufts, always slim. Keep all twelve clouds separated, leave all cell boundaries transparent, no cast shadows behind sprites. Preserve real alpha transparency."
+    },
+    {
+      "key": "hills",
+      "transparent": true,
+      "prompt": "Use case: stylized-concept. Asset type: one wide panoramic painted hill silhouette layer for a Japanese anime game town. Real transparent background above the hills, no sky painted behind it. A continuous low rolling range of wooded Japanese hills across the full width, richly hand-painted with layered muted lavender, dusty violet and soft sage-lilac slopes, elegant restrained anime background painting, soft atmospheric shapes but visible ridge and woodland detail. Hills occupy the lower half of the image with a modest uneven skyline rising near the middle; solid painted land extends all the way to the bottom edge, no transparent holes below the ridge. No mountains with snowy peaks, no buildings, no clouds, no text, no frame or vignette. Very wide landscape panorama; left and right hill edges at the same elevation and color for a wrapping background strip. Gentle pastel daylight, no bright yellow sky. This is a flat layer texture, not a perspective mockup."
+    }
+  ]
+}

@@ -10,7 +10,6 @@ from collections import defaultdict
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'Temp/MoriohAuthoringDeps'))
-from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageChops
 
 OUT = ROOT / 'Assets/ActiveMotion3D/Art/Environment/Morioh/DesignKit/Source'
 MODEL = OUT / 'Models'
@@ -469,6 +468,7 @@ def horizon():
     return m
 
 def textures():
+    from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageChops
     fontpath=next((p for p in [Path('C:/Windows/Fonts/YuGothM.ttc'),Path('C:/Windows/Fonts/msgothic.ttc')] if p.exists()),None)
     if fontpath is None: raise RuntimeError('Japanese font required for source atlas; existing Windows Yu Gothic or MS Gothic expected.')
     jp=ImageFont.truetype(str(fontpath),64);en=ImageFont.truetype(str(fontpath),26)

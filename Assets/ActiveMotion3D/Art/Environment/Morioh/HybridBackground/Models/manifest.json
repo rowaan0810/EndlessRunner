@@ -1,0 +1,40 @@
+{
+  "model": {
+    "name": "TownSilhouette",
+    "triangles": 15138,
+    "materialSlots": 5
+  },
+  "palette": {
+    "TownNear": [
+      112,
+      107,
+      143
+    ],
+    "TownMid": [
+      139,
+      129,
+      163
+    ],
+    "Roof": [
+      93,
+      89,
+      124
+    ],
+    "Window": [
+      179,
+      171,
+      190
+    ],
+    "Trim": [
+      89,
+      84,
+      118
+    ],
+    "Ground": [
+      168,
+      150,
+      181
+    ]
+  },
+  "seed": 481
+}

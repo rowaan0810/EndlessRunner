@@ -1,5 +1,7 @@
 # Morioh environment and activity artwork
 
+For the newer painted sky, independently drifting illustrated clouds and detailed horizon, use [HYBRID_BACKGROUND.md](HYBRID_BACKGROUND.md) after installing the street kit. Its **Tools → Morioh → Background** commands update the background without rebuilding the streets.
+
 Prepared on branch `codex/morioh-design-complete`, after the gesture rollback. The new gesture feature remains removed.
 
 The source models, textures, shaders and authoring commands are present. **The new design has not been assembled or applied in Unity yet.** No scene file was edited during this work. The two menu commands below perform that final installation.
