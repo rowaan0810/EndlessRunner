@@ -1,0 +1,221 @@
+# 🎨 Visual Polish Checklist — Assets to Create
+
+Everything below is currently **missing** from your game. Items are sorted by visual impact (highest first).
+
+---
+
+## 🔴 Priority 1: UI Screens (Biggest Visual Impact)
+
+These are full-screen images the player stares at. They set the tone for your game.
+
+### 1. Main Menu Background
+- **What**: Full-screen cyberpunk city background for the main menu
+- **Current state**: Uses `Resources/UI/MenuBackground.jpg` — a generic dark image
+- **Specs**: `1920×1080` PNG or JPG
+- **Where it goes**: `Assets/Resources/UI/MenuBackground.jpg` (overwrite existing)
+- **Design tips**: Neon-lit cityscape, rain effects, glowing signs. Think Subway Surfers splash screen but cyberpunk
+
+### 2. Game Logo / Title Art
+- **What**: Stylized "ENDLESS RUNNER" or your custom game title
+- **Current state**: Plain white text generated in code
+- **Specs**: `800×200` PNG with **transparent background**
+- **Where it goes**: `Assets/ActiveMotion3D/Art/UI/GameLogo.png` (new)
+- **Design tips**: Neon glow, chrome/metallic text, cyberpunk font. Could include a silhouette of a runner
+
+### 3. Game Over Splash
+- **What**: Background image or overlay for the Game Over screen
+- **Current state**: Plain semi-transparent dark rectangle
+- **Specs**: `1920×1080` PNG (can be semi-transparent)
+- **Where it goes**: `Assets/ActiveMotion3D/Art/UI/GameOverBg.png` (new)
+- **Design tips**: Shattered glass effect, red neon flicker, "glitch" aesthetic
+
+---
+
+## 🟠 Priority 2: HUD Icons & Elements
+
+Small but they make the game feel polished instead of prototype-y.
+
+### 4. Coin Icon
+- **What**: Gold coin sprite for the HUD counter
+- **Current state**: A text character "◆" used as placeholder
+- **Specs**: `64×64` or `128×128` PNG, transparent background
+- **Where it goes**: `Assets/ActiveMotion3D/Art/UI/CoinIcon.png`
+- **Design tips**: Shiny gold coin with a "C" or star emblem, slight 3D effect
+
+### 5. Shield Power-Up Icon
+- **What**: Icon for David's shield ability
+- **Specs**: `128×128` PNG, transparent background
+- **Where it goes**: `Assets/ActiveMotion3D/Art/UI/PowerUp_Shield.png`
+- **Design tips**: Cyan energy shield bubble
+
+### 6. Magnet Power-Up Icon
+- **What**: Icon for Ty's coin magnet ability
+- **Specs**: `128×128` PNG, transparent
+- **Where it goes**: `Assets/ActiveMotion3D/Art/UI/PowerUp_Magnet.png`
+- **Design tips**: Red horseshoe magnet with spark effects
+
+### 7. Score Multiplier Icon (2X)
+- **What**: Icon for Big Vegas's 2x score ability
+- **Specs**: `128×128` PNG, transparent
+- **Where it goes**: `Assets/ActiveMotion3D/Art/UI/PowerUp_2xScore.png`
+- **Design tips**: Gold "2X" text with lightning/sparkle
+
+### 8. Tung Smash Icon
+- **What**: Icon for Tung Tung's obstacle destruction ability
+- **Specs**: `128×128` PNG, transparent
+- **Where it goes**: `Assets/ActiveMotion3D/Art/UI/PowerUp_TungSmash.png`
+- **Design tips**: Orange explosion/fist impact
+
+### 9. Speed Bar Frame
+- **What**: Decorative border for the speed indicator bar
+- **Current state**: Plain rectangle with outline
+- **Specs**: `256×32` PNG, transparent, with neon border design
+- **Where it goes**: `Assets/ActiveMotion3D/Art/UI/SpeedBarFrame.png`
+
+### 10. Heart / Life Icon (if you add lives later)
+- **Specs**: `64×64` PNG, transparent
+- **Where it goes**: `Assets/ActiveMotion3D/Art/UI/HeartIcon.png`
+
+---
+
+## 🟡 Priority 3: Button Styles
+
+### 11. Button Background (Normal)
+- **What**: Reusable button texture for all menu buttons
+- **Current state**: Plain dark rectangles with colored outlines
+- **Specs**: `400×80` PNG, 9-slice compatible (rounded corners)
+- **Where it goes**: `Assets/ActiveMotion3D/Art/UI/ButtonNormal.png`
+- **Design tips**: Dark glass/metal with subtle gradient, neon edge glow
+
+### 12. Button Background (Hover/Pressed)
+- **What**: Highlighted version when mouse hovers or button is pressed
+- **Specs**: Same size, brighter version of #11
+- **Where it goes**: `Assets/ActiveMotion3D/Art/UI/ButtonHover.png`
+
+### 13. Character Selection Card
+- **What**: Background card frame for each character in the menu
+- **Specs**: `300×400` PNG, transparent, with border frame
+- **Where it goes**: `Assets/ActiveMotion3D/Art/UI/CharacterCard.png`
+- **Design tips**: Holographic frame with character name area at bottom
+
+---
+
+## 🟢 Priority 4: 3D Game Elements (Render in Blender/etc.)
+
+### 14. Coin 3D Model
+- **What**: Gold coin collectible
+- **Current state**: Code-generated yellow cylinder — very ugly
+- **Specs**: `.fbx` or `.obj`, low-poly (under 500 tris), with gold material
+- **Where it goes**: `Assets/ActiveMotion3D/Art/Models/Coin.fbx`
+- **Design tips**: Spinning coin with embossed star/logo, metallic gold shader
+
+### 15. Barrier / Obstacle Models
+- **What**: Obstacles the player avoids (barriers, barricades, crates)
+- **Current state**: Plain cubes with solid colors
+- **Specs**: `.fbx`, low-poly, 2-3 variations
+- **Where it goes**: `Assets/ActiveMotion3D/Art/Models/Barrier_01.fbx` etc.
+- **Design tips**: Neon-lit construction barriers, holographic walls, laser gates
+
+### 16. Track/Road Texture
+- **What**: Road surface texture for the running track
+- **Current state**: Plain gray material
+- **Specs**: `1024×1024` tiling PNG (albedo + normal map)
+- **Where it goes**: `Assets/ActiveMotion3D/Art/Textures/Road_Albedo.png`
+- **Design tips**: Dark asphalt with neon lane markers, wet reflections
+
+### 17. Sidewalk/Ground Texture
+- **Specs**: `1024×1024` tiling PNG
+- **Where it goes**: `Assets/ActiveMotion3D/Art/Textures/Ground_Albedo.png`
+- **Design tips**: Futuristic hexagonal tiles, subtle glow lines
+
+---
+
+## 🔵 Priority 5: Effects & Particles (Optional but Premium Feel)
+
+### 18. Coin Collect Particle
+- **What**: Sparkle/burst when collecting a coin
+- **Specs**: `128×128` PNG sprite sheet or single particle sprite
+- **Where it goes**: `Assets/ActiveMotion3D/Art/VFX/Sparkle.png`
+
+### 19. Shield Bubble Texture
+- **What**: Semi-transparent texture for the shield sphere
+- **Current state**: Plain transparent sphere
+- **Specs**: `512×512` PNG with hex grid or energy pattern
+- **Where it goes**: `Assets/ActiveMotion3D/Art/VFX/ShieldTexture.png`
+
+### 20. Smash/Explosion Effect
+- **What**: Burst effect when Tung Smash destroys obstacles
+- **Specs**: `256×256` PNG sprite
+- **Where it goes**: `Assets/ActiveMotion3D/Art/VFX/SmashBurst.png`
+
+---
+
+## 🟣 Priority 6: Branding & Polish
+
+### 21. App Icon
+- **What**: Game icon for the window/build
+- **Specs**: `512×512` PNG, no transparency
+- **Where it goes**: `Assets/ActiveMotion3D/Art/AppIcon.png` → set in **Project Settings → Player → Default Icon**
+
+### 22. Loading Screen / Splash
+- **What**: Shown during scene transitions
+- **Specs**: `1920×1080` PNG
+- **Where it goes**: `Assets/ActiveMotion3D/Art/UI/LoadingScreen.png`
+
+### 23. Character Portraits (×4)
+- **What**: Small portrait/headshot of each character for the menu
+- **Specs**: `256×256` PNG each, transparent background
+- **Where it goes**: `Assets/ActiveMotion3D/Art/UI/Portrait_David.png`, etc.
+- **Design tips**: Render in Blender from your character FBX, cyberpunk lighting, circular crop
+
+---
+
+## 📁 Suggested Folder Structure
+
+```
+Assets/ActiveMotion3D/Art/
+├── UI/
+│   ├── GameLogo.png                    (#2)
+│   ├── GameOverBg.png                  (#3)
+│   ├── CoinIcon.png                    (#4)
+│   ├── PowerUp_Shield.png             (#5)
+│   ├── PowerUp_Magnet.png             (#6)
+│   ├── PowerUp_2xScore.png            (#7)
+│   ├── PowerUp_TungSmash.png          (#8)
+│   ├── SpeedBarFrame.png              (#9)
+│   ├── HeartIcon.png                  (#10)
+│   ├── ButtonNormal.png               (#11)
+│   ├── ButtonHover.png                (#12)
+│   ├── CharacterCard.png              (#13)
+│   ├── LoadingScreen.png              (#22)
+│   ├── Portrait_David.png             (#23)
+│   ├── Portrait_Ty.png                (#23)
+│   ├── Portrait_BigVegas.png          (#23)
+│   └── Portrait_TungTung.png          (#23)
+├── Models/
+│   ├── Coin.fbx                       (#14)
+│   └── Barrier_01.fbx                 (#15)
+├── Textures/
+│   ├── Road_Albedo.png                (#16)
+│   └── Ground_Albedo.png              (#17)
+├── VFX/
+│   ├── Sparkle.png                    (#18)
+│   ├── ShieldTexture.png              (#19)
+│   └── SmashBurst.png                 (#20)
+└── AppIcon.png                         (#21)
+```
+
+---
+
+## ⚡ Quick-Win Order (Start Here)
+
+If you're short on time, do these first — they give the most visual bang for the effort:
+
+1. **#1 — Menu Background** (replaces the blank dark screen)
+2. **#2 — Game Logo** (makes the menu look legit)
+3. **#4 — Coin Icon** (replaces the ugly "◆" text character)
+4. **#14 — Coin 3D Model** (replaces the yellow cylinder in-game)
+5. **#11 — Button textures** (makes all menus look premium)
+
+> [!TIP]
+> After you create each asset, I can help you wire it into the game scripts so it actually shows up in Unity.

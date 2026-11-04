@@ -1,72 +1,29 @@
-# EndlessRunner — Cyberpunk Pose-Controlled Runner
+# Active Motion 3D — Endless Runner
 
-A simplified endless runner inspired by Subway Surfers, built in Unity 6 as a TEEP project.
-Control the game with your **body via webcam** using MediaPipe pose detection, or use the keyboard.
+This Unity 6 project is a three-lane endless runner with keyboard and webcam pose input, character selection, punch targets, and Human Tetris walls. The intended game uses the **ActiveMotion3D runtime** in `Assets/ActiveMotion3D/Scripts/`.
 
-## Features
-- **3-Lane Running**: Dodge obstacles by switching lanes, jumping, and ducking
-- **Webcam Hand Gestures**: Use your body to play — lean to switch lanes, raise your right index finger to jump, and open your palm to duck.
-- **Easy Mode**: Merged with webcam mode for seamless play without exaggerated movements.
-- **Cyberpunk Environment**: Procedurally generated neon city with fog and night lighting
-- **Multiple Characters**: Support for multiple 3D characters (David, Ty, Big Vegas) swappable from the Main Menu.
-- **Keyboard Controls**: Full arrow key / WASD support
+## Open the game
 
-## Controls (Keyboard)
-| Key | Action |
-|-----|--------|
-| ←/A | Move left lane |
-| →/D | Move right lane |
-| ↑/W/Space | Jump |
-| ↓/S | Duck/Roll |
-| R | Restart (after game over) |
-| Escape | Quit |
+1. Open the project in Unity **6000.4.7f1**.
+2. Open `Assets/ActiveMotion3D/Scenes/AM3D_MainMenu.unity`.
+3. Enter Play Mode and select an input mode and character, then select **Start Game**.
 
-## Quick Start
-1. Open the project in **Unity 6** (6000.4.7f1 or later)
-2. Import the required third-party assets (see below)
-3. Open `Assets/Scenes/MainScene` (or any empty scene)
-4. Create an empty GameObject and add the `SceneSetup` component
-5. Press Play — the scene auto-builds and the game starts
+The configured build scenes are `AM3D_MainMenu` first and `AM3D_ActiveMotionBase` second. The gameplay scene returns to `AM3D_MainMenu`. The alternate `Assets/ActiveMotion3D/AM3D_MainMenu_F.unity` is retained in the workspace but is not the selected menu or a build scene.
 
-## Required Third-Party Assets (not included in repo)
+## Play
 
-These assets are free but cannot be redistributed. Download and import them manually:
+- Keyboard: **A/Left** and **D/Right** change lanes; **W/Up/Space** jumps; **S/Down** ducks.
+- Webcam mode uses MediaPipe pose input. Follow the guidance shown in the game for movement, jump, duck, punch targets, and Human Tetris poses.
+- The menu switches input mode and character. Gameplay includes score, coins, obstacles, game over, restart, and return to menu.
 
-| Asset | Source | Instructions |
-|-------|--------|--------------|
-| **Demo City by Versatile Studio** | [Unity Asset Store](https://assetstore.unity.com/packages/3d/environments/demo-city-by-versatile-studio-mobile-friendly-269772) (Free) | Add to My Assets → Package Manager → Import |
-| **Characters (David, Ty, Big Vegas, Tung Tung, etc.)** | [Mixamo](https://www.mixamo.com/) (Free) | Download characters + Running, Jumping, Stand To Roll animations as FBX. Extract Textures & Materials, then place in `Assets/Art/Character/` |
+The project owner reports that all features are working and does not need another feature check. In a separate Unity 6000.4.7f1 Editor session, we observed keyboard menu-to-gameplay routing, left-lane movement, obstacle game over, Play Again, Return to Menu, and the gameplay Quit button stopping Play Mode. Those observations are **Editor checks**, not evidence of webcam behavior or a standalone build. See `PROJECT_HANDOFF.md` for the working-tree state and verification details.
 
-After importing the Mixamo assets and extracting their textures, run **Tools → Endless Runner → Setup 3D Character** from the Unity menu bar. This will automatically wire up any new `.fbx` character you add to the game!
+## Project paths
 
-## Project Structure
-```
-Assets/
-├── Scripts/
-│   ├── Core/              # GameManager, GameSpeed
-│   ├── Input/             # IGameInput, KeyboardInput, PoseInput, EasyModeInput, InputManager
-│   │   └── PoseDetection/ # PoseController, MediaPipeManager
-│   ├── Player/            # PlayerController, PlayerCollision, PlayerAnimator
-│   ├── Track/             # TrackManager, TrackSegment
-│   ├── Obstacles/         # ObstacleSpawner, Obstacle
-│   ├── Collectibles/      # Coin
-│   ├── UI/                # GameHUD, MainMenu, GameOverScreen
-│   └── SceneSetup.cs      # Auto-creates scene hierarchy
-├── Editor/                # SetupCharacterEditor (Mixamo automation)
-├── Art/Character/          # Mixamo FBX files + Animator Controller (gitignored)
-├── Scenes/
-└── MediaPipeUnity/         # MediaPipe Unity Plugin
-```
+- `Assets/ActiveMotion3D/Scenes/` and `Assets/ActiveMotion3D/Scripts/` — intended game scenes and runtime.
+- `Assets/ActiveMotion3D/README.md` — integration notes and activity descriptions.
+- `Assets/Scripts/` and `Assets/Scenes/MainScene.unity` — original runner implementation, retained but not selected for the game. Its runtime is separate from the selected ActiveMotion3D game.
 
-## Tech Stack
-- **Engine**: Unity 6 (URP)
-- **Pose Detection**: MediaPipe Unity Plugin
-- **Character**: Mixamo (David)
-- **Environment**: Demo City by Versatile Studio
-- **Language**: C#
+See `ROADMAP.md` for the agreed order of controls, visual work, and release preparation. Character abilities are out of scope.
 
-## Development Timeline
-- **Week 1**: Core runner mechanics, keyboard input, 3-lane movement
-- **Week 2**: Obstacles, coins, scoring, UI, full game loop
-- **Week 3**: MediaPipe pose control, Easy Mode, input refinement
-- **Design Phase**: 3D character integration, Cyberpunk environment, visual polish
+The working tree contains uncommitted source, scene, art, and project-setting changes. Preserve each asset with its `.meta` file, and review `ProjectSettings/ProjectSettings.asset` with Git LFS before staging it. Local `GameExec_*` folders are build outputs, not the Unity source project. Check third-party asset redistribution rights before sharing a full project or build.

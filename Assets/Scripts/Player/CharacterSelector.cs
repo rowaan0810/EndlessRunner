@@ -14,6 +14,10 @@ namespace EndlessRunner.Player
         public GameObject[] models;
         public Avatar[] avatars;
 
+        [Header("Menu Display Names (optional)")]
+        [Tooltip("Names shown in the character menu. Leave an entry blank to use its model GameObject name.")]
+        public string[] displayNames;
+
         private int currentIndex = 0;
         public int CurrentIndex => currentIndex;
         private Animator animator;
@@ -67,6 +71,12 @@ namespace EndlessRunner.Player
         {
             if (models == null || models.Length == 0) return "NONE";
             if (currentIndex < 0 || currentIndex >= models.Length) return "NONE";
+
+            if (displayNames != null && currentIndex < displayNames.Length &&
+                !string.IsNullOrWhiteSpace(displayNames[currentIndex]))
+            {
+                return displayNames[currentIndex].ToUpper();
+            }
 
             return models[currentIndex].name.ToUpper();
         }
