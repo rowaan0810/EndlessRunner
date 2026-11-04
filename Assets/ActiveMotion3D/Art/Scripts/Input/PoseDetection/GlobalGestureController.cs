@@ -20,6 +20,8 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
         [SerializeField, Range(0f, 1f)] private float minimumLandmarkVisibility = 0.35f;
         [SerializeField, Range(0.01f, 0.3f)] private float minimumShoulderWidth = 0.08f;
         [SerializeField, Min(0.05f)] private float maximumFrameAgeSeconds = 0.35f;
+        [SerializeField, Range(0, 3)] private int cameraRetryCount = 1;
+        [SerializeField, Min(0.1f)] private float cameraRetryDelaySeconds = 1f;
 
         [Header("Crossed Arms To Exit")]
         [SerializeField, Min(0.1f)] private float exitHoldSeconds = 0.8f;
@@ -49,9 +51,11 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
         private static void Bootstrap()
         {
             GameObject prefab = Resources.Load<GameObject>("GlobalGestureController");
-            if (prefab == null || prefab.GetComponent<GlobalGestureController>() == null)
+            if (prefab == null || prefab.GetComponent<GlobalGestureController>() == null ||
+                prefab.GetComponent<MediaPipeManager>() == null ||
+                prefab.GetComponent<HandGestureManager>() == null)
             {
-                Debug.LogError("GlobalGestureController prefab is missing from Resources.");
+                Debug.LogError("GlobalGestureController prefab or its camera managers are missing from Resources.");
                 return;
             }
             Instantiate(prefab);
@@ -87,23 +91,38 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
             detectionRoutine = StartCoroutine(EnsureDetection());
         }
 
+        /// <summary>Retry a failed camera open when the player starts webcam mode again.</summary>
+        public void RetryDetection() => BeginDetection();
+
         private IEnumerator EnsureDetection()
         {
-            // Give the destination scene's authored PoseDetector time to register.
+            // Let scene startup settle before checking the persistent managers.
             yield return null;
             MediaPipeManager pose = MediaPipeManager.Instance;
             HandGestureManager hands = HandGestureManager.Instance;
             if (pose == null || hands == null)
             {
-                GameObject detector = new GameObject("GlobalGestureDetector");
-                if (pose == null) pose = detector.AddComponent<MediaPipeManager>();
-                if (hands == null) hands = detector.AddComponent<HandGestureManager>();
+                Debug.LogError("Global gesture camera managers are unavailable.");
+                detectionRoutine = null;
+                yield break;
             }
 
             if (!pose.IsRunning) pose.StartDetection();
+            int retries = 0;
             while (!pose.IsRunning)
             {
-                if (pose.StatusMessage.StartsWith("ERROR")) yield break;
+                if (pose.StatusMessage.StartsWith("ERROR"))
+                {
+                    if (retries >= cameraRetryCount)
+                    {
+                        detectionRoutine = null;
+                        yield break;
+                    }
+                    retries++;
+                    yield return new WaitForSecondsRealtime(cameraRetryDelaySeconds);
+                    pose.StopDetection();
+                    pose.StartDetection();
+                }
                 yield return null;
             }
             if (!hands.IsRunning) hands.StartDetection();

@@ -18,6 +18,8 @@ public static class GlobalGesturePrefabBuilder
         try
         {
             root.AddComponent<GlobalGestureController>();
+            root.AddComponent<MediaPipeManager>();
+            root.AddComponent<HandGestureManager>();
             PrefabUtility.SaveAsPrefabAsset(root, path);
             AssetDatabase.SaveAssets();
             Debug.Log("Global gesture prefab created: " + path);

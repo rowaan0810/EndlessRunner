@@ -139,8 +139,11 @@ namespace ActiveMotion3D.EndlessRunner.UI
             leavingScene = true;
             Time.timeScale = 1f;
             GameManager.Instance?.ReturnToMenu();
-            MediaPipeManager.Instance?.StopDetection();
-            HandGestureManager.Instance?.StopDetection();
+            if (GlobalGestureController.Instance == null)
+            {
+                MediaPipeManager.Instance?.StopDetection();
+                HandGestureManager.Instance?.StopDetection();
+            }
             yield return new WaitForEndOfFrame();
             yield return null;
             SceneManager.LoadScene(mainMenuScene);
