@@ -1,0 +1,1 @@
+PASS: lettering spawner and resource removed; four separate variants; trigger collider and kinematic body; player collision layers; runner overlap and adjacent-lane clearance; all four variants cause Game Over without a shield and consume a shield on impact; resource loading, restart and pool reuse. Targeted Editor validation; not a full Play Mode or standalone run.

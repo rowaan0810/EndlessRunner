@@ -1,0 +1,2 @@
+PASS: prefab, model render, lane targeting and commitment, encounter reservation, shield, detonation, restart, reuse, pause, fatal collision, visible impact particles, unscaled particle time, impact presentation delay, ordinary collision timing.
+Editor component smoke checks and impact render; no webcam or standalone build exercised.

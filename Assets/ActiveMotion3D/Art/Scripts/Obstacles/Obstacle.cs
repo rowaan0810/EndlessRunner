@@ -10,7 +10,9 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
     {
         BarrierLow,    // Must jump over
         BarrierHigh,   // Must duck under
-        BarrierFull    // Blocks one lane, must dodge sideways
+        BarrierFull,   // Blocks one lane, must dodge sideways
+        SheerHeartAttack, // Small approaching explosive; jump or dodge
+        MenacingRoadSigns // Oversized street signs; change lanes
     }
 
     /// <summary>
@@ -29,12 +31,14 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
         /// <summary>Which lane(s) this obstacle occupies (set by spawner).</summary>
         public int Lane { get; set; }
 
-        private void Update()
+        protected virtual float ApproachSpeed => GameSpeed.Instance != null ? GameSpeed.Instance.Current : 10f;
+
+        protected virtual void Update()
         {
             if (GameManager.Instance == null || GameManager.Instance.State != GameState.Playing)
                 return;
 
-            float speed = GameSpeed.Instance != null ? GameSpeed.Instance.Current : 10f;
+            float speed = ApproachSpeed;
 
             // Move toward the player (negative Z)
             transform.Translate(Vector3.back * speed * Time.deltaTime, Space.World);

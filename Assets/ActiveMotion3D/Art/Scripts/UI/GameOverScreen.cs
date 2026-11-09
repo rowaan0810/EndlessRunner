@@ -26,6 +26,7 @@ namespace ActiveMotion3D.EndlessRunner.UI
         [SerializeField] private Button menuButton;
 
         private bool isReturningToMainMenu;
+        private Coroutine pendingShow;
 
         // Cyberpunk palette
         private static readonly Color NeonCyan = new Color(0f, 0.95f, 1f);
@@ -73,6 +74,27 @@ namespace ActiveMotion3D.EndlessRunner.UI
 
         private void Show()
         {
+            if (pendingShow != null) StopCoroutine(pendingShow);
+            float delay = GameManager.Instance != null ? GameManager.Instance.GameOverPresentationDelay : 0f;
+            if (delay > 0f)
+            {
+                if (panel != null) panel.SetActive(false);
+                pendingShow = StartCoroutine(ShowAfterImpact(delay));
+                return;
+            }
+            ShowPanel();
+        }
+
+        private IEnumerator ShowAfterImpact(float delay)
+        {
+            yield return new WaitForSecondsRealtime(delay);
+            pendingShow = null;
+            if (GameManager.Instance != null && GameManager.Instance.State == GameState.GameOver)
+                ShowPanel();
+        }
+
+        private void ShowPanel()
+        {
             if (panel == null) return;
             panel.SetActive(true);
 
@@ -107,6 +129,11 @@ namespace ActiveMotion3D.EndlessRunner.UI
 
         private void Hide()
         {
+            if (pendingShow != null)
+            {
+                StopCoroutine(pendingShow);
+                pendingShow = null;
+            }
             if (panel != null) panel.SetActive(false);
         }
 

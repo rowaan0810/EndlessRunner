@@ -1,5 +1,34 @@
 # Endless Runner — Project Handoff
 
+## Active scene decision — 2026-11-05
+
+The owner selected `Assets/ActiveMotion3D/Scenes/AM3D_MainMenu.unity` and
+`Assets/ActiveMotion3D/Scenes/AM3D_Morioh_Full.unity` for all work going forward.
+This supersedes older gameplay-scene references below. The menu already routes
+to Morioh Full, and both scenes are enabled in Build Settings.
+
+Sheer Heart Attack is an editable prefab under
+`Assets/ActiveMotion3D/Art/Obstacles/SheerHeartAttack/`. Morioh Full's obstacle
+spawner enables it. It targets the player's lane at spawn, approaches 4 units/s
+faster than the track, and can be jumped or dodged. Impact detonates it through
+the existing player collision/shield rules. Its encounter drains prior hazards
+and reserves the track until it passes. Timing and prefab assignment are exposed
+on the spawner. Other scenes leave its spawn toggle disabled.
+
+Validation: the full runtime compiled with the installed Unity Roslyn compiler.
+Unity 6000.4.7f1 batch component checks passed for the prefab, targeting and lane
+commitment, encounter reservation, shield, detonation, restart/reuse, pause, and
+fatal collision. These invoke component logic in an isolated preview scene;
+live keyboard/webcam play and a standalone build were not checked. The rendered
+model and check results are in `Docs/SheerHeartAttack/`.
+
+Explosion visibility fix: gameplay still ends immediately on impact, while the
+results panel waits for Sheer Heart Attack's `Impact Presentation Seconds`
+(default 0.85 s). Ordinary obstacle results remain immediate. Impact particles
+use unscaled time and a soft additive shader. The batch component checks also
+cover particle emission after fatal collision, delayed results, restart during
+the delay, and ordinary collision timing; `impact.png` shows the rendered burst.
+
 **Prepared:** 2026-11-02  
 **Purpose:** Preserve the project state, release-path decision, and verification limits without mistaking local work in progress for a clean release.
 

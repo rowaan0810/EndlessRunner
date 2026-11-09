@@ -28,6 +28,20 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
         [SerializeField, Min(0f)] private float minCoinInterval = 0.8f;
         [SerializeField, Min(0f)] private float maxCoinInterval = 2f;
 
+        [Header("Sheer Heart Attack")]
+        [SerializeField] private bool spawnSheerHeartAttack;
+        [SerializeField] private SheerHeartAttack sheerHeartAttackPrefab;
+        [SerializeField, Min(5f)] private float firstSheerHeartAttackDelay = 16f;
+        [SerializeField, Min(8f)] private float minSheerHeartAttackInterval = 18f;
+        [SerializeField, Min(8f)] private float maxSheerHeartAttackInterval = 26f;
+        private SheerHeartAttack sheerHeartAttack;
+        private ActiveMotion3D.EndlessRunner.Player.PlayerController sheerHeartAttackTarget;
+        private float nextSheerHeartAttackTime;
+
+        [Header("Menacing Road Signs")]
+        [SerializeField, Range(0f, 1f)] private float menacingRoadSignsChance = 0.22f;
+        private readonly List<Obstacle> poolMenacingSigns = new List<Obstacle>();
+        private GameObject menacingSignsPrefab;
         [Header("Human Tetris")]
         [SerializeField] private bool spawnHumanTetris = true;
         [Tooltip("First wall appears after this many seconds of play.")]
@@ -98,6 +112,7 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
             ScheduleNextSpawn();
             ScheduleNextPunchTarget();
             nextHumanTetrisTime = Time.time + firstHumanTetrisDelay;
+            nextSheerHeartAttackTime = firstSheerHeartAttackDelay;
 
             if (GameManager.Instance != null)
             {
@@ -159,8 +174,10 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
             if (GameManager.Instance == null || GameManager.Instance.State != GameState.Playing)
                 return;
 
-            // Spawn obstacles at intervals
-            if (spawnObstacles && Time.time >= nextSpawnTime && IsHumanTetrisPreludeClear())
+            bool explosiveEncounter = UpdateSheerHeartAttack();
+
+            // Reserve empty track for the faster explosive, including its approach.
+            if (!explosiveEncounter && spawnObstacles && Time.time >= nextSpawnTime && IsHumanTetrisPreludeClear())
             {
                 SpawnObstacleGroup();
                 ScheduleNextSpawn();
@@ -176,14 +193,14 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
                 nextCoinTime = Time.time + Random.Range(minCoinInterval, Mathf.Max(minCoinInterval, maxCoinInterval));
             }
 
-            if (spawnPunchTargets && Time.time >= nextPunchTargetTime && IsHumanTetrisPreludeClear())
+            if (!explosiveEncounter && spawnPunchTargets && Time.time >= nextPunchTargetTime && IsHumanTetrisPreludeClear())
             {
                 if (Random.value <= punchTargetChance)
                     SpawnPunchTarget();
                 ScheduleNextPunchTarget();
             }
 
-            if (spawnHumanTetris && Time.time >= nextHumanTetrisTime)
+            if (!explosiveEncounter && spawnHumanTetris && Time.time >= nextHumanTetrisTime)
             {
                 SpawnHumanTetris();
                 ScheduleNextHumanTetris();
@@ -197,6 +214,38 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
             float speedFactor = Mathf.InverseLerp(10f, 30f, speed);
             float interval = Mathf.Lerp(maxInterval, minInterval, speedFactor);
             nextSpawnTime = Time.time + interval;
+        }
+
+        private bool UpdateSheerHeartAttack()
+        {
+            if (!spawnSheerHeartAttack || sheerHeartAttackPrefab == null) return false;
+            if (sheerHeartAttack != null && sheerHeartAttack.gameObject.activeSelf)
+            {
+                nextHumanTetrisTime = Mathf.Max(nextHumanTetrisTime, Time.time + 4f);
+                nextSpawnTime = Mathf.Max(nextSpawnTime, Time.time + 1.5f);
+                return true;
+            }
+            if (GameManager.Instance.TimeSurvived < nextSheerHeartAttackTime) return false;
+
+            // Drain existing hazards first: different approach speeds must never
+            // sandwich the player between a pose gate and an explosive.
+            foreach (Obstacle obstacle in poolBarrierLow) if (obstacle.gameObject.activeSelf) return true;
+            foreach (Obstacle obstacle in poolBarrierHigh) if (obstacle.gameObject.activeSelf) return true;
+            foreach (Obstacle obstacle in poolBarrierFull) if (obstacle.gameObject.activeSelf) return true;
+            foreach (Obstacle obstacle in poolMenacingSigns) if (obstacle.gameObject.activeSelf) return true;
+            foreach (HumanTetrisWall wall in humanTetrisPool) if (wall.gameObject.activeSelf) return true;
+            foreach (PunchTarget target in punchTargetPool) if (target.gameObject.activeSelf) return true;
+
+            if (sheerHeartAttack == null) sheerHeartAttack = Instantiate(sheerHeartAttackPrefab, transform);
+            // Aim at the player's lane once, then commit so a sidestep remains reliable.
+            if (sheerHeartAttackTarget == null)
+                sheerHeartAttackTarget = FindAnyObjectByType<ActiveMotion3D.EndlessRunner.Player.PlayerController>();
+            int lane = sheerHeartAttackTarget != null ? sheerHeartAttackTarget.CurrentLane : 1;
+            sheerHeartAttack.Setup(new Vector3((lane - 1) * laneWidth, 0f, spawnDistance), lane, ObstacleType.SheerHeartAttack);
+            nextSheerHeartAttackTime = GameManager.Instance.TimeSurvived + Random.Range(
+                minSheerHeartAttackInterval, Mathf.Max(minSheerHeartAttackInterval, maxSheerHeartAttackInterval));
+            nextHumanTetrisTime = Mathf.Max(nextHumanTetrisTime, Time.time + 4f);
+            return true;
         }
 
         private void ScheduleNextPunchTarget()
@@ -257,6 +306,7 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
         /// </summary>
         private void SpawnObstacleGroup()
         {
+            if (Random.value < menacingRoadSignsChance && SpawnMenacingRoadSigns()) return;
             float roll = Random.value;
 
             if (roll < 0.35f)
@@ -284,6 +334,25 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
                 // High barrier across all lanes — must duck
                 SpawnObstacle(ObstacleType.BarrierHigh, -1); // -1 = all lanes
             }
+        }
+
+        private bool SpawnMenacingRoadSigns()
+        {
+            if (menacingSignsPrefab == null)
+                menacingSignsPrefab = Resources.Load<GameObject>("MenacingRoadSigns/MenacingRoadSignsV2");
+            if (menacingSignsPrefab == null) return false;
+            Obstacle sign = poolMenacingSigns.Find(item => !item.gameObject.activeSelf);
+            if (sign == null)
+            {
+                GameObject root = Instantiate(menacingSignsPrefab, transform);
+                sign = root.GetComponent<Obstacle>();
+                poolMenacingSigns.Add(sign);
+            }
+            int lane = Random.Range(0, 3);
+            sign.Setup(new Vector3((lane - 1) * laneWidth, 0f, spawnDistance), lane, ObstacleType.MenacingRoadSigns);
+            // The authored width is 2.45m; preserve clearance if lane settings change.
+            sign.transform.localScale = new Vector3(Mathf.Min(1f, laneWidth / 3.2f), 1f, 1f);
+            return true;
         }
 
         private void SpawnObstacle(ObstacleType type, int lane)
@@ -899,6 +968,10 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
         /// </summary>
         public void ResetSpawner()
         {
+            foreach (var sign in poolMenacingSigns)
+                if (sign != null) sign.gameObject.SetActive(false);
+            if (sheerHeartAttack != null) sheerHeartAttack.gameObject.SetActive(false);
+            nextSheerHeartAttackTime = firstSheerHeartAttackDelay;
             // Deactivate all pooled objects
             foreach (var obs in poolBarrierLow)
             {

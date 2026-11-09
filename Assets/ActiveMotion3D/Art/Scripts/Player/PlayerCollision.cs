@@ -32,11 +32,13 @@ namespace ActiveMotion3D.EndlessRunner.Player
 
             if (isObstacle)
             {
+                SheerHeartAttack explosive = other.GetComponentInParent<SheerHeartAttack>();
+                if (explosive != null) explosive.Detonate();
                 if (IsShielded)
                 {
                     IsShielded = false;
                     Debug.Log("Shield absorbed a collision!");
-                    other.gameObject.SetActive(false);
+                    if (explosive == null) other.gameObject.SetActive(false);
                     return;
                 }
 
@@ -47,7 +49,7 @@ namespace ActiveMotion3D.EndlessRunner.Player
                 if (SfxPlayer.Instance != null && SfxPlayer.Instance.hitClip != null)
                     SfxPlayer.Instance.Play(SfxPlayer.Instance.hitClip);
 
-                GameManager.Instance.TriggerGameOver();
+                GameManager.Instance.TriggerGameOver(explosive != null ? explosive.ImpactPresentationSeconds : 0f);
             }
         }
 

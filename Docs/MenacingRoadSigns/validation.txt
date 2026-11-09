@@ -1,0 +1,1 @@
+PASS: serialized type, single trigger, lane clearance, rigidbody, glyphs, resource loading, spawn lane alignment, restart, pool reuse, preview render.

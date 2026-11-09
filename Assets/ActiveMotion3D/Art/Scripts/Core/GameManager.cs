@@ -39,6 +39,9 @@ namespace ActiveMotion3D.EndlessRunner.Core
         /// <summary>Current game state.</summary>
         public GameState State { get; private set; } = GameState.Menu;
 
+        /// <summary>Time reserved for the final impact effect before showing the results UI.</summary>
+        public float GameOverPresentationDelay { get; private set; }
+
         /// <summary>Distance-based score (meters run).</summary>
         public float DistanceScore { get; private set; }
 
@@ -93,6 +96,7 @@ namespace ActiveMotion3D.EndlessRunner.Core
         /// </summary>
         public void StartGame()
         {
+            GameOverPresentationDelay = 0f;
             Time.timeScale = 1f;
             State = GameState.Playing;
             DistanceScore = 0f;
@@ -109,10 +113,13 @@ namespace ActiveMotion3D.EndlessRunner.Core
         /// <summary>
         /// End the current run. Called when the player hits an obstacle.
         /// </summary>
-        public void TriggerGameOver()
+        public void TriggerGameOver() => TriggerGameOver(0f);
+
+        public void TriggerGameOver(float presentationDelay)
         {
             if (State != GameState.Playing) return;
 
+            GameOverPresentationDelay = Mathf.Max(0f, presentationDelay);
             State = GameState.GameOver;
 
             // Centralized so obstacle collisions and failed Human Tetris gates
