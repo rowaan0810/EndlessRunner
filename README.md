@@ -1,29 +1,32 @@
-# Active Motion 3D — Endless Runner
+# Steel Ball Run
 
-This Unity 6 project is a three-lane endless runner with keyboard and webcam pose input, character selection, punch targets, and Human Tetris walls. The intended game uses the **ActiveMotion3D runtime** in `Assets/ActiveMotion3D/Scripts/`.
+Steel Ball Run is a three-lane endless runner set in Morioh. Choose D4C or Killer Queen, dodge obstacles, and collect coins as the pace picks up. Play with a keyboard or use a webcam with MediaPipe pose tracking.
 
-## Open the game
+## Open the project
 
-1. Open the project in Unity **6000.4.7f1**.
-2. Open `Assets/ActiveMotion3D/Scenes/AM3D_MainMenu.unity`.
-3. Enter Play Mode and select an input mode and character, then select **Start Game**.
+1. Install Git LFS before cloning so Git can download the Unity assets. For an existing clone, run `git lfs pull` from the project root.
+2. Open the project in Unity **6000.4.7f1** and let Unity finish importing.
+3. Open [AM3D_MainMenu.unity](Assets/ActiveMotion3D/Scenes/AM3D_MainMenu.unity) and enter Play Mode.
+4. Choose a character and input mode, then start the run. For webcam mode, stand centered in the camera frame during calibration.
 
-The configured build scenes are `AM3D_MainMenu` first and `AM3D_ActiveMotionBase` second. The gameplay scene returns to `AM3D_MainMenu`. The alternate `Assets/ActiveMotion3D/AM3D_MainMenu_F.unity` is retained in the workspace but is not the selected menu or a build scene.
+The build starts in `AM3D_MainMenu`, which loads [AM3D_Morioh_Full.unity](Assets/ActiveMotion3D/Scenes/AM3D_Morioh_Full.unity) for gameplay.
 
-## Play
+## Controls
 
-- Keyboard: **A/Left** and **D/Right** change lanes; **W/Up/Space** jumps; **S/Down** ducks.
-- Webcam mode uses MediaPipe pose input. Follow the guidance shown in the game for movement, jump, duck, punch targets, and Human Tetris poses.
-- The menu switches input mode and character. Gameplay includes score, coins, obstacles, game over, restart, and return to menu.
+| Action | Keyboard | Webcam |
+| --- | --- | --- |
+| Change lanes | A / D or Left / Right | Lean left or right |
+| Jump | W, Up, or Space | Jump |
+| Duck | S or Down | Crouch |
 
-The project owner reports that all features are working and does not need another feature check. In a separate Unity 6000.4.7f1 Editor session, we observed keyboard menu-to-gameplay routing, left-lane movement, obstacle game over, Play Again, Return to Menu, and the gameplay Quit button stopping Play Mode. Those observations are **Editor checks**, not evidence of webcam behavior or a standalone build. See `PROJECT_HANDOFF.md` for the working-tree state and verification details.
+- Raise the matching arm when a punch target lights up to earn a coin. Match the pose shown on an approaching Human Tetris wall to pass through.
+- Change lanes to dodge Menacing Road Signs. Jump over Sheer Heart Attack or move out of its lane before it reaches you.
+- Press **Esc** or select **Pause** to open the pause menu. From there you can resume, restart, return to the main menu, or quit.
+- The results screen shows your score, distance, coins, and time. Select **Play Again** to retry or **Main Menu** to change characters or controls.
 
-## Project paths
+## Project files
 
-- `Assets/ActiveMotion3D/Scenes/` and `Assets/ActiveMotion3D/Scripts/` — intended game scenes and runtime.
-- `Assets/ActiveMotion3D/README.md` — integration notes and activity descriptions.
-- `Assets/Scripts/` and `Assets/Scenes/MainScene.unity` — original runner implementation, retained but not selected for the game. Its runtime is separate from the selected ActiveMotion3D game.
-
-See `ROADMAP.md` for the agreed order of controls, visual work, and release preparation. Character abilities are out of scope.
-
-The working tree contains uncommitted source, scene, art, and project-setting changes. Preserve each asset with its `.meta` file, and review `ProjectSettings/ProjectSettings.asset` with Git LFS before staging it. Local `GameExec_*` folders are build outputs, not the Unity source project. Check third-party asset redistribution rights before sharing a full project or build.
+- [Gameplay scripts](Assets/ActiveMotion3D/Art/Scripts)
+- [Morioh background notes](Docs/MoriohDesign/HYBRID_BACKGROUND.md) for the painted sky, drifting clouds, and town skyline.
+- [Menacing Road Signs](Docs/MenacingRoadSigns/README.md) for obstacle variants, tuning, and targeted Editor checks.
+- [Steel Ball Run Morioh showcase](deck_output/Steel-Ball-Run-Morioh-Showcase.pptx)
