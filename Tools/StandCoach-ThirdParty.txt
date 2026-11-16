@@ -1,0 +1,23 @@
+Stand Coach Windows runtime
+
+llama.cpp b9000 (MIT)
+https://github.com/ggml-org/llama.cpp/tree/b9000
+
+Qwen2.5-1.5B-Instruct Q4_K_M (Apache 2.0)
+https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF
+
+sherpa-onnx v1.13.5 (Apache 2.0)
+https://github.com/k2-fsa/sherpa-onnx/tree/v1.13.5
+
+Kokoro-82M voices (Apache 2.0)
+https://huggingface.co/hexgrad/Kokoro-82M
+https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models
+
+ONNX Runtime (MIT)
+https://github.com/microsoft/onnxruntime
+
+eSpeak NG data and phonemizer
+https://github.com/espeak-ng/espeak-ng
+
+Microsoft Visual C++ runtime libraries (app-local, when present)
+https://learn.microsoft.com/cpp/windows/redistributing-visual-cpp-files

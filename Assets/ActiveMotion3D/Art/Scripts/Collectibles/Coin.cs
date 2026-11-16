@@ -57,13 +57,13 @@ namespace ActiveMotion3D.EndlessRunner.Collectibles
 
         private void OnTriggerEnter(Collider other)
         {
+            GameManager gameManager = GameManager.Instance;
+            if (!isActiveAndEnabled || gameManager == null || gameManager.State != GameState.Playing)
+                return;
+
             if (other.CompareTag("Player") || other.GetComponent<Player.PlayerController>() != null)
             {
-                // Award coin
-                if (GameManager.Instance != null)
-                {
-                    GameManager.Instance.AddCoin(1);
-                }
+                gameManager.AddCoin();
 
                 if (ActiveMotion3D.EndlessRunner.Core.SfxPlayer.Instance != null)
                     ActiveMotion3D.EndlessRunner.Core.SfxPlayer.Instance.PlayCoin();

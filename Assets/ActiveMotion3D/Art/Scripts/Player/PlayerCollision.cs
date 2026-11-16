@@ -25,17 +25,19 @@ namespace ActiveMotion3D.EndlessRunner.Player
                 return;
 
             // Check if it's an obstacle (by component or tag)
-            bool isObstacle = other.GetComponent<Obstacle>() != null
-                           || other.GetComponentInParent<Obstacle>() != null;
+            Obstacle obstacle = other.GetComponentInParent<Obstacle>();
 
 
 
-            if (isObstacle)
+            if (obstacle != null)
             {
+                obstacle.RecordImpact();
+                GameManager game = GameManager.Instance;
                 SheerHeartAttack explosive = other.GetComponentInParent<SheerHeartAttack>();
                 if (explosive != null) explosive.Detonate();
                 if (IsShielded)
                 {
+                    game.Feedback.ShieldHits++;
                     IsShielded = false;
                     Debug.Log("Shield absorbed a collision!");
                     if (explosive == null) other.gameObject.SetActive(false);
@@ -49,7 +51,10 @@ namespace ActiveMotion3D.EndlessRunner.Player
                 if (SfxPlayer.Instance != null && SfxPlayer.Instance.hitClip != null)
                     SfxPlayer.Instance.Play(SfxPlayer.Instance.hitClip);
 
-                GameManager.Instance.TriggerGameOver(explosive != null ? explosive.ImpactPresentationSeconds : 0f);
+                PlayerController player = GetComponent<PlayerController>();
+                game.Feedback.EndAtObstacle(obstacle.Type, obstacle.Lane, game.TimeSurvived,
+                    player != null && player.IsGrounded, player != null && player.IsDucking);
+                game.TriggerGameOver(explosive != null ? explosive.ImpactPresentationSeconds : 0f);
             }
         }
 

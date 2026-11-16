@@ -29,9 +29,21 @@ sysinfo.txt
 
 # Builds
 *.apk
+/StandCoachRuntime/
+/GameExec_v*/
 *.aab
 *.unitypackage
 *.app
+
+# Local Unity recovery and presentation build files
+/Assets/_Recovery/0*.unity
+/Assets/_Recovery/0*.unity.meta
+/deck_build/node_modules/
+/deck_build/render/
+/deck_build/revised_render/
+/deck_build/revised_draft.pptx
+/deck_build/revised_transitions.pptx
+*.pptx.inspect.ndjson
 
 # Crashlytics
 crashlytics-build.properties

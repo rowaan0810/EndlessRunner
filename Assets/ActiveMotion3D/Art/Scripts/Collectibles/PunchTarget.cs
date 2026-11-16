@@ -29,6 +29,7 @@ namespace ActiveMotion3D.EndlessRunner.Collectibles
         public PunchTargetSide Side { get; private set; }
         public bool IsHighlighted { get; private set; }
         public float CurrentHighlightSeconds { get; private set; }
+        private float lastEarlyRaise;
 
         private Renderer targetRenderer;
         private Material runtimeMaterial;
@@ -49,6 +50,7 @@ namespace ActiveMotion3D.EndlessRunner.Collectibles
         private void OnEnable()
         {
             IsHighlighted = false;
+            lastEarlyRaise = float.NegativeInfinity;
             transform.localScale = Vector3.one;
             ApplyColor(idleColor, 0.15f);
         }
@@ -87,7 +89,18 @@ namespace ActiveMotion3D.EndlessRunner.Collectibles
                 Collect();
                 return;
             }
-            if (position.z < missZ) gameObject.SetActive(false);
+            if (position.z < missZ)
+            {
+                GameManager.Instance.Feedback.PunchMisses++;
+                if (lastEarlyRaise > float.NegativeInfinity)
+                    GameManager.Instance.Feedback.EarlyPunchMisses++;
+                gameObject.SetActive(false);
+            }
+            else if (!IsHighlighted && distanceToHit <= maximumHitDistance + movementSpeed * 0.5f &&
+                     PunchArmInput.HasRaise(Side))
+            {
+                lastEarlyRaise = GameManager.Instance.TimeSurvived;
+            }
         }
 
         public void Setup(Vector3 position, PunchTargetSide side, float hitDistance, float reactionSeconds)
@@ -103,7 +116,8 @@ namespace ActiveMotion3D.EndlessRunner.Collectibles
 
         private void Collect()
         {
-            if (GameManager.Instance != null) GameManager.Instance.AddCoin(1);
+            if (GameManager.Instance != null) GameManager.Instance.AddPunchCoin();
+            if (GameManager.Instance != null) GameManager.Instance.Feedback.PunchHits++;
             if (authoredVisual != null)
             {
                 authoredVisual.PlayHit();
@@ -211,6 +225,12 @@ namespace ActiveMotion3D.EndlessRunner.Collectibles
             if (!rightRaiseEvent) return false;
             rightRaiseEvent = false;
             return true;
+        }
+
+        public static bool HasRaise(PunchTargetSide side)
+        {
+            UpdateState();
+            return side == PunchTargetSide.Left ? leftRaiseEvent : rightRaiseEvent;
         }
 
         private static bool ReadArmRaised(PunchTargetSide side)

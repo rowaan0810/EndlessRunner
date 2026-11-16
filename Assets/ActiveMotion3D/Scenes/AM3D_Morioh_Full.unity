@@ -4336,7 +4336,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ActiveMotion3D.EndlessRunner.Obstacles.ObstacleSpawner
   spawnObstacles: 1
-  spawnCoins: 0
+  spawnCoins: 1
   spawnDistance: 80
   minInterval: 1.2
   maxInterval: 3
@@ -11787,7 +11787,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &1670650318
 RectTransform:
   m_ObjectHideFlags: 0

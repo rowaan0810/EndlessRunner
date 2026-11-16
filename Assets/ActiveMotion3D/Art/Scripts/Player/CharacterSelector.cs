@@ -24,13 +24,12 @@ namespace ActiveMotion3D.EndlessRunner.Player
         private int currentIndex = 0;
         private Animator animator;
 
+        internal GameObject CurrentModel => models != null && currentIndex >= 0 && currentIndex < models.Length
+            ? models[currentIndex] : null;
+
         private void Awake()
         {
             animator = GetComponent<Animator>();
-        }
-
-        private void Start()
-        {
             currentIndex = PlayerPrefs.GetInt(PrefKey, 0);
 
             if (models == null || currentIndex < 0 || currentIndex >= models.Length)
@@ -38,8 +37,9 @@ namespace ActiveMotion3D.EndlessRunner.Player
                 currentIndex = 0;
             }
 
-            ApplyCharacter(currentIndex);
         }
+
+        private void Start() => ApplyCharacter(currentIndex);
 
         public void CycleCharacter()
         {

@@ -30,6 +30,10 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
 
         /// <summary>Which lane(s) this obstacle occupies (set by spawner).</summary>
         public int Lane { get; set; }
+        private bool outcomeRecorded;
+        private Collider obstacleCollider;
+
+        internal void RecordImpact() => outcomeRecorded = true;
 
         protected virtual float ApproachSpeed => GameSpeed.Instance != null ? GameSpeed.Instance.Current : 10f;
 
@@ -42,6 +46,12 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
 
             // Move toward the player (negative Z)
             transform.Translate(Vector3.back * speed * Time.deltaTime, Space.World);
+
+            if (!outcomeRecorded && obstacleCollider != null && obstacleCollider.bounds.max.z < -1f)
+            {
+                outcomeRecorded = true;
+                GameManager.Instance.Feedback.ClearObstacle(Type);
+            }
 
             // Deactivate when past the camera
             if (transform.position.z < despawnZ)
@@ -58,7 +68,9 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
             transform.position = position;
             Lane = lane;
             type = obstacleType;
+            outcomeRecorded = false;
             gameObject.SetActive(true);
+            obstacleCollider = GetComponentInChildren<Collider>();
         }
     }
 }

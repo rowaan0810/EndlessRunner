@@ -24,6 +24,21 @@ The build starts in `AM3D_MainMenu`, which loads [AM3D_Morioh_Full.unity](Assets
 - Press **Esc** or select **Pause** to open the pause menu. From there you can resume, restart, return to the main menu, or quit.
 - The results screen shows your score, distance, coins, and time. Select **Play Again** to retry or **Main Menu** to change characters or controls.
 
+## Stand Coach on Windows
+
+From the project root, run `.\Tools\Setup-StandCoach.ps1` in PowerShell before entering Play Mode or making a Windows x64 build with Stand Coach. The first setup downloads the language model and voices into `StandCoachRuntime/`. Unity copies that folder into Windows x64 builds automatically. Share the whole build folder so the executable can find its `_Data` folder and the bundled runtime.
+
+On the main menu, click the voice name to switch between the two voices for the selected Stand, and click **Preview voice** to hear it. After a crash, your Stand speaks an AI-generated run assessment, cause of the crash, and next-run tip. The results card has **Replay feedback** and an optional captions toggle. The game runs both the language and speech models locally.
+
+Choose between **Onyx** (default) and **Fenrir** for D4C, or **George** (default) and **Fable** for Killer Queen. See [Stand Coach third-party notices](Tools/StandCoach-ThirdParty.txt) for the bundled components.
+
+### Edit the game-over screen in Unity
+
+1. In the Project window, open `Assets/ActiveMotion3D/Art/UI/Resources/RunResults.prefab` in Prefab Mode.
+2. Expand **Results frame**. **Score and actions** contains the headline, score, stats, and navigation buttons. **Stand Coach** contains the portrait, captions, and playback controls.
+3. Use **Rect Transform** to move or resize an element, **Text** to edit fonts and labels, and **Image** to edit colors. The root **Run Results View** exposes the portrait background color and the two model references.
+4. Save the prefab, then play a run from `AM3D_MainMenu` to see the populated screen. The sample score and Stand name in Prefab Mode are replaced by the actual run data.
+
 ## Project files
 
 - [Gameplay scripts](Assets/ActiveMotion3D/Art/Scripts)

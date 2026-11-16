@@ -102,7 +102,10 @@ namespace ActiveMotion3D.EndlessRunner.Player
             IGameInput input = InputManager.Instance?.CurrentInput;
             if (input == null) return;
 
+            int previousLane = currentLane;
             HandleHorizontalMovement(input);
+            if (previousLane != currentLane)
+                GameManager.Instance.Feedback.LastLaneChange = GameManager.Instance.TimeSurvived;
             HandleJump(input);
             HandleDuck(input);
             ApplyMovement();
@@ -138,6 +141,7 @@ namespace ActiveMotion3D.EndlessRunner.Player
                 {
                     verticalVelocity = jumpForce;
                     isGrounded = false;
+                    GameManager.Instance.Feedback.LastJump = GameManager.Instance.TimeSurvived;
                     if (ActiveMotion3D.EndlessRunner.Core.SfxPlayer.Instance != null) ActiveMotion3D.EndlessRunner.Core.SfxPlayer.Instance.PlayJump();
                     PlayCameraFeedback(jumpCameraRise);
                 }
@@ -155,6 +159,7 @@ namespace ActiveMotion3D.EndlessRunner.Player
                 if (isGrounded && !isDucking)
                 {
                     StartDuck();
+                    GameManager.Instance.Feedback.LastDuck = GameManager.Instance.TimeSurvived;
                 }
                 else if (!isGrounded)
                 {

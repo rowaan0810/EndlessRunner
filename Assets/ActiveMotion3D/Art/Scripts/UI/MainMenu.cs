@@ -31,6 +31,7 @@ namespace ActiveMotion3D.EndlessRunner.UI
         [SerializeField, Range(0.25f, 1f)] private float calibrationLeadTime = 0.5f;
         private InputMode selectedMode = InputMode.Webcam;
         private bool startInProgress;
+        private StandVoiceMenu standVoiceMenu;
 
         // Cyberpunk palette
         private static readonly Color NeonCyan = new Color(0f, 0.95f, 1f);
@@ -71,6 +72,12 @@ namespace ActiveMotion3D.EndlessRunner.UI
                 startButton.onClick.AddListener(DoStartGame);
             modeButton?.onClick.AddListener(CycleMode);
             characterButton?.onClick.AddListener(CycleCharacter);
+            if (characterButton != null)
+            {
+                standVoiceMenu = gameObject.AddComponent<StandVoiceMenu>();
+                standVoiceMenu.Initialize(characterButton);
+                startButton?.onClick.AddListener(standVoiceMenu.StopPreview);
+            }
             quitButton?.onClick.AddListener(DoQuit);
             UpdateModeLabel();
             UpdateCharacterLabel();
@@ -131,6 +138,7 @@ namespace ActiveMotion3D.EndlessRunner.UI
 
         private void HideMenu()
         {
+            standVoiceMenu?.StopPreview();
             if (panel != null) panel.SetActive(false);
         }
 
@@ -318,6 +326,7 @@ namespace ActiveMotion3D.EndlessRunner.UI
             
             charSelector.CycleCharacter();
             UpdateCharacterLabel(charSelector);
+            standVoiceMenu?.Refresh();
         }
 
         private void UpdateCharacterLabel(CharacterSelector selector = null)

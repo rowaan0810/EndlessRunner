@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using ActiveMotion3D.EndlessRunner.Core;
 using ActiveMotion3D.EndlessRunner.Input;
 using ActiveMotion3D.EndlessRunner.Input.PoseDetection;
 
@@ -116,7 +117,8 @@ namespace ActiveMotion3D.EndlessRunner.UI
             if (hudPanel == null) return;
 
             var hgm = HandGestureManager.Instance;
-            bool active = hgm != null && hgm.IsRunning && hgm.WebcamTexture != null;
+            bool active = GameManager.Instance?.State != GameState.GameOver &&
+                hgm != null && hgm.IsRunning && hgm.WebcamTexture != null;
 
             hudPanel.SetActive(active);
             if (!active) return;

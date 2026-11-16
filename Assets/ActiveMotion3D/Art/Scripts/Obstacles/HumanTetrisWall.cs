@@ -64,6 +64,7 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
         private HumanTetrisPose requiredPose;
         private int requiredLane;
         private float lastSuccessfulMatchTime;
+        private bool trackingReliable;
         private bool poseReady;
         private Material waitingMaterial;
         private Material readyMaterial;
@@ -89,7 +90,7 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
             transform.position = position;
             requiredLane = Mathf.Clamp(lane, 0, 2);
             requiredPose = pose;
-            lastSuccessfulMatchTime = -999f;
+            lastSuccessfulMatchTime = float.NegativeInfinity;
             poseReady = false;
             ConfigureSilhouette();
             SetSilhouetteReady(false);
@@ -132,6 +133,7 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
             bool passed = poseMatchesNow || recentlyMatched;
             if (passed)
             {
+                GameManager.Instance.Feedback.PoseClears++;
                 if (ActiveMotion3D.EndlessRunner.Core.SfxPlayer.Instance != null) ActiveMotion3D.EndlessRunner.Core.SfxPlayer.Instance.PlaySuccess();
                 Debug.Log($"Human Tetris passed: pose {requiredPose}");
                 gameObject.SetActive(false);
@@ -141,6 +143,7 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
             PlayerCollision collision = player.GetComponent<PlayerCollision>();
             if (collision != null && collision.IsShielded)
             {
+                GameManager.Instance.Feedback.ShieldHits++;
                 collision.IsShielded = false;
                 gameObject.SetActive(false);
                 return;
@@ -150,11 +153,24 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
                       $"left[horizontal={lastLeftHorizontal}, raised={lastLeftRaised}], " +
                       $"right[horizontal={lastRightHorizontal}, raised={lastRightRaised}], " +
                       $"down[left={lastLeftDown}, right={lastRightDown}], upY={lastUpwardYSign}");
+            bool keyboard = InputManager.Instance != null && InputManager.Instance.CurrentMode == InputMode.Keyboard;
+            string pose = requiredPose switch
+            {
+                HumanTetrisPose.BothArmsV => "both arms in a V",
+                HumanTetrisPose.LeftArmHorizontal => "screen-left arm horizontal",
+                HumanTetrisPose.RightArmHorizontal => "screen-right arm horizontal",
+                HumanTetrisPose.BothArmsHorizontal => "both arms horizontal",
+                HumanTetrisPose.LeftArmRaised => "screen-left arm raised",
+                _ => "screen-right arm raised"
+            };
+            GameManager.Instance.Feedback.EndAtPose(pose, keyboard, ((int)requiredPose + 1).ToString(),
+                trackingReliable, Time.time - lastSuccessfulMatchTime, recognitionGraceSeconds);
             GameManager.Instance.TriggerGameOver();
         }
 
         private bool IsRequiredPoseHeld()
         {
+            trackingReliable = false;
             lastLeftRaised = false;
             lastRightRaised = false;
             lastLeftHorizontal = false;
@@ -186,6 +202,7 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
             bool rightElbowVisible = lm[RightElbow].visibility >= minimumElbowVisibility;
             bool leftWristVisible = lm[LeftWrist].visibility >= minimumWristVisibility;
             bool rightWristVisible = lm[RightWrist].visibility >= minimumWristVisibility;
+            trackingReliable = (leftElbowVisible || leftWristVisible) && (rightElbowVisible || rightWristVisible);
             bool leftRaised = IsArmRaised(lm, LeftShoulder, LeftElbow, LeftWrist,
                 shoulderWidth, imageAspectCorrection, upwardYSign, raisedMinimumDegrees);
             bool rightRaised = IsArmRaised(lm, RightShoulder, RightElbow, RightWrist,

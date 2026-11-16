@@ -20,6 +20,9 @@ namespace ActiveMotion3D.EndlessRunner.Core
     /// </summary>
     public class GameManager : MonoBehaviour
     {
+        private const int PunchCoinBonus = 10;
+        private int punchBonusScore;
+
         public static GameManager Instance { get; private set; }
 
         [Header("Scene Startup")]
@@ -49,7 +52,7 @@ namespace ActiveMotion3D.EndlessRunner.Core
         public int CoinScore { get; private set; }
 
         /// <summary>Combined score for display.</summary>
-        public int TotalScore => Mathf.FloorToInt(DistanceScore) + (CoinScore * pointsPerCoin);
+        public int TotalScore => Mathf.FloorToInt(DistanceScore) + (CoinScore * pointsPerCoin) + punchBonusScore;
 
         /// <summary>All-time high score from PlayerPrefs.</summary>
         public int HighScore
@@ -64,6 +67,8 @@ namespace ActiveMotion3D.EndlessRunner.Core
 
         /// <summary>Time survived this run in seconds.</summary>
         public float TimeSurvived { get; private set; }
+
+        internal RunFeedback Feedback { get; private set; } = new RunFeedback();
 
         private void Awake()
         {
@@ -101,7 +106,9 @@ namespace ActiveMotion3D.EndlessRunner.Core
             State = GameState.Playing;
             DistanceScore = 0f;
             CoinScore = 0;
+            punchBonusScore = 0;
             TimeSurvived = 0f;
+            Feedback = new RunFeedback();
 
             if (GameSpeed.Instance != null)
                 GameSpeed.Instance.StartRunning();
@@ -187,6 +194,12 @@ namespace ActiveMotion3D.EndlessRunner.Core
         public void AddCoin(int count = 1)
         {
             CoinScore += count;
+        }
+
+        public void AddPunchCoin()
+        {
+            AddCoin();
+            punchBonusScore += PunchCoinBonus;
         }
     }
 }

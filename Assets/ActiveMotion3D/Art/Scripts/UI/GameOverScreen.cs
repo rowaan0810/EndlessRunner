@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using ActiveMotion3D.EndlessRunner.Core;
+using ActiveMotion3D.EndlessRunner.Input;
 using ActiveMotion3D.EndlessRunner.Input.PoseDetection;
 using ActiveMotion3D.EndlessRunner.Player;
 
@@ -27,6 +28,9 @@ namespace ActiveMotion3D.EndlessRunner.UI
 
         private bool isReturningToMainMenu;
         private Coroutine pendingShow;
+        private StandCoachPanel coach;
+        private RunResultsView results;
+        private Color bestScoreColor;
 
         // Cyberpunk palette
         private static readonly Color NeonCyan = new Color(0f, 0.95f, 1f);
@@ -40,6 +44,23 @@ namespace ActiveMotion3D.EndlessRunner.UI
 
         private void Start()
         {
+            var resultsPrefab = Resources.Load<GameObject>("RunResults");
+            if (resultsPrefab != null && resultsPrefab.TryGetComponent(out RunResultsView authoredResults))
+            {
+                if (panel != null) panel.SetActive(false);
+                results = Instantiate(authoredResults);
+                results.name = "Run Results";
+                panel = results.gameObject;
+                panel.SetActive(false);
+                scoreText = results.score;
+                highScoreText = results.best;
+                bestScoreColor = highScoreText.color;
+                statsText = null;
+                restartButton = results.playAgain;
+                menuButton = results.mainMenu;
+                coach = gameObject.AddComponent<StandCoachPanel>();
+                coach.Initialize(results);
+            }
             if (panel == null)
             {
                 Debug.LogError("GameOverScreen is not authored in the scene. Run Tools > Active Motion 3D > Build Main Scene.", this);
@@ -75,6 +96,12 @@ namespace ActiveMotion3D.EndlessRunner.UI
         private void Show()
         {
             if (pendingShow != null) StopCoroutine(pendingShow);
+            var game = GameManager.Instance;
+            if (coach != null && game != null)
+            {
+                string mode = InputManager.Instance != null ? InputManager.Instance.GetModeName() : "Unknown";
+                coach.Begin(game.Feedback.Describe(game, mode), StandCoachRuntime.IsKillerQueen);
+            }
             float delay = GameManager.Instance != null ? GameManager.Instance.GameOverPresentationDelay : 0f;
             if (delay > 0f)
             {
@@ -102,20 +129,20 @@ namespace ActiveMotion3D.EndlessRunner.UI
             if (gm == null) return;
 
             if (scoreText != null)
-                scoreText.text = $"{gm.TotalScore}";
+                scoreText.text = $"{gm.TotalScore:N0}";
 
             bool isNewHigh = gm.TotalScore >= gm.HighScore;
             if (highScoreText != null)
             {
                 if (isNewHigh)
                 {
-                    highScoreText.text = "★ NEW HIGH SCORE ★";
+                    highScoreText.text = "NEW HIGH SCORE";
                     highScoreText.color = GoldCoin;
                 }
                 else
                 {
-                    highScoreText.text = $"BEST: {gm.HighScore}";
-                    highScoreText.color = DimText;
+                    highScoreText.text = $"BEST  {gm.HighScore:N0}";
+                    highScoreText.color = results != null ? bestScoreColor : DimText;
                 }
             }
 
@@ -125,10 +152,18 @@ namespace ActiveMotion3D.EndlessRunner.UI
                                  $"COINS  {gm.CoinScore}   ·   " +
                                  $"TIME  {gm.TimeSurvived:F1}s";
             }
+            if (results != null)
+            {
+                results.distance.text = $"{gm.DistanceScore:F0} m";
+                results.coins.text = $"{gm.CoinScore:N0}";
+                results.time.text = $"{gm.TimeSurvived:F1} s";
+            }
+            coach?.Present(FindAnyObjectByType<CharacterSelector>());
         }
 
         private void Hide()
         {
+            coach?.ResetReport();
             if (pendingShow != null)
             {
                 StopCoroutine(pendingShow);
