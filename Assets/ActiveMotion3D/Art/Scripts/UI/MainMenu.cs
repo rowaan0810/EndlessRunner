@@ -3,6 +3,7 @@
 
 using System.Collections;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using ActiveMotion3D.EndlessRunner.Core;
 using ActiveMotion3D.EndlessRunner.Input;
@@ -20,18 +21,25 @@ namespace ActiveMotion3D.EndlessRunner.UI
         [SerializeField] private Text modeLabel;
         [SerializeField] private Text modeDescription;
         [SerializeField] private Text characterLabel;
+        [SerializeField, Tooltip("Portraits in the same order as CharacterSelector.models.")]
+        private RectTransform[] characterPortraits;
+        [SerializeField, Tooltip("Selection arrows in the same order as the portraits.")]
+        private GameObject[] characterSelectionArrows;
         [SerializeField] private Button startButton;
         [SerializeField] private Button modeButton;
         [SerializeField] private Button characterButton;
         [SerializeField] private Button quitButton;
+        [SerializeField] private Button settingsButton;
         [Header("Webcam Start Countdown")]
         [SerializeField] private GameObject countdownOverlay;
         [SerializeField] private Text countdownText;
         [SerializeField, Min(1f)] private float countdownDuration = 5f;
         [SerializeField, Range(0.25f, 1f)] private float calibrationLeadTime = 0.5f;
         private InputMode selectedMode = InputMode.Webcam;
+        private GameObject settingsPanel;
         private bool startInProgress;
-        private StandVoiceMenu standVoiceMenu;
+        private Vector3[] portraitBaseScales;
+        private const float SelectedPortraitScale = 1.08f;
 
         // Cyberpunk palette
         private static readonly Color NeonCyan = new Color(0f, 0.95f, 1f);
@@ -71,16 +79,24 @@ namespace ActiveMotion3D.EndlessRunner.UI
             if (startButton != null && startButton.onClick.GetPersistentEventCount() == 0)
                 startButton.onClick.AddListener(DoStartGame);
             modeButton?.onClick.AddListener(CycleMode);
-            characterButton?.onClick.AddListener(CycleCharacter);
             if (characterButton != null)
             {
-                standVoiceMenu = gameObject.AddComponent<StandVoiceMenu>();
-                standVoiceMenu.Initialize(characterButton);
-                startButton?.onClick.AddListener(standVoiceMenu.StopPreview);
+                characterButton.onClick.AddListener(CycleCharacter);
+                StandCoachRuntime.Instance?.WarmOpening(StandCoachRuntime.IsKillerQueen);
             }
             quitButton?.onClick.AddListener(DoQuit);
+            if (settingsButton != null) CreateRunSpeedSettings();
             UpdateModeLabel();
-            UpdateCharacterLabel();
+            if (characterPortraits != null)
+            {
+                portraitBaseScales = new Vector3[characterPortraits.Length];
+                for (int i = 0; i < characterPortraits.Length; i++)
+                {
+                    if (characterPortraits[i] != null)
+                        portraitBaseScales[i] = characterPortraits[i].localScale;
+                }
+            }
+            UpdateCharacterDisplay(FindAnyObjectByType<CharacterSelector>());
 
             Invoke(nameof(ShowMenu), 0.1f);
         }
@@ -138,7 +154,6 @@ namespace ActiveMotion3D.EndlessRunner.UI
 
         private void HideMenu()
         {
-            standVoiceMenu?.StopPreview();
             if (panel != null) panel.SetActive(false);
         }
 
@@ -267,6 +282,8 @@ namespace ActiveMotion3D.EndlessRunner.UI
             if (modeButton != null) modeButton.interactable = interactable;
             if (characterButton != null) characterButton.interactable = interactable;
             if (quitButton != null) quitButton.interactable = interactable;
+            if (settingsButton != null) settingsButton.interactable = interactable;
+            if (!interactable && settingsPanel != null) settingsPanel.SetActive(false);
         }
 
         private void SetMenuContentVisible(bool visible)
@@ -274,6 +291,8 @@ namespace ActiveMotion3D.EndlessRunner.UI
             // All authored menu controls are children of MenuCard.
             if (startButton != null && startButton.transform.parent != null)
                 startButton.transform.parent.gameObject.SetActive(visible);
+            if (settingsButton != null) settingsButton.gameObject.SetActive(visible);
+            if (settingsPanel != null) settingsPanel.SetActive(false);
         }
 
         private void CycleMode()
@@ -308,7 +327,7 @@ namespace ActiveMotion3D.EndlessRunner.UI
                 modeDescription.text = selectedMode switch
                 {
                     InputMode.Keyboard => "Arrow Keys / WASD to move  |  Space: Jump  |  S: Duck",
-                    InputMode.Webcam => "Body / Gesture: Jump & Duck  |  Lean: Continuous Move",
+                    InputMode.Webcam => "Index Up / Down: Jump / Duck  |  Lean: Move",
                     _ => ""
                 };
             }
@@ -325,19 +344,33 @@ namespace ActiveMotion3D.EndlessRunner.UI
                 }
             
             charSelector.CycleCharacter();
-            UpdateCharacterLabel(charSelector);
-            standVoiceMenu?.Refresh();
+            UpdateCharacterDisplay(charSelector);
+            StandCoachRuntime.Instance?.WarmOpening(StandCoachRuntime.IsKillerQueen);
         }
 
-        private void UpdateCharacterLabel(CharacterSelector selector = null)
+        private void UpdateCharacterDisplay(CharacterSelector selector)
         {
-            if (characterLabel == null) return;
+            if (selector == null) return;
 
-            if (selector == null) selector = FindAnyObjectByType<CharacterSelector>();
-
-            if (selector != null)
-            {
+            if (characterLabel != null)
                 characterLabel.text = selector.GetCurrentCharacterName();
+
+            if (portraitBaseScales == null) return;
+
+            for (int i = 0; i < characterPortraits.Length; i++)
+            {
+                RectTransform portrait = characterPortraits[i];
+                if (portrait != null)
+                    portrait.localScale = portraitBaseScales[i] * (i == selector.CurrentIndex ? SelectedPortraitScale : 1f);
+            }
+
+            if (characterSelectionArrows == null) return;
+
+            for (int i = 0; i < characterSelectionArrows.Length; i++)
+            {
+                GameObject arrow = characterSelectionArrows[i];
+                if (arrow != null)
+                    arrow.SetActive(i == selector.CurrentIndex);
             }
         }
 
@@ -352,13 +385,39 @@ namespace ActiveMotion3D.EndlessRunner.UI
 
         private void Update()
         {
-            if (panel != null && panel.activeInHierarchy)
+            if (panel == null || !panel.activeInHierarchy) return;
+
+            if (settingsPanel != null && settingsPanel.activeSelf)
             {
-                if (UnityEngine.Input.GetKeyDown(KeyCode.Return) || UnityEngine.Input.GetKeyDown(KeyCode.Space))
+                if (UnityEngine.Input.GetKeyDown(KeyCode.Escape))
                 {
-                    DoStartGame();
+                    settingsPanel.SetActive(false);
+                    EventSystem.current?.SetSelectedGameObject(settingsButton.gameObject);
                 }
+                return;
             }
+
+            if (settingsButton != null &&
+                EventSystem.current?.currentSelectedGameObject == settingsButton.gameObject) return;
+
+            if (UnityEngine.Input.GetKeyDown(KeyCode.Return) || UnityEngine.Input.GetKeyDown(KeyCode.Space))
+                DoStartGame();
+        }
+
+        private void CreateRunSpeedSettings()
+        {
+            var buttonRect = (RectTransform)settingsButton.transform;
+            var menuRect = (RectTransform)panel.transform;
+            settingsPanel = CreateCard(menuRect, "SettingsPanel", 352f, 84f, DarkBg);
+            var panelRect = (RectTransform)settingsPanel.transform;
+            panelRect.anchorMin = panelRect.anchorMax = panelRect.pivot = Vector2.one;
+            var buttonBottomRight = new Vector2(buttonRect.rect.xMax, buttonRect.rect.yMin);
+            var panelPosition = (Vector2)menuRect.InverseTransformPoint(buttonRect.TransformPoint(buttonBottomRight));
+            panelRect.anchoredPosition = panelPosition - menuRect.rect.max + Vector2.down * 12f;
+            RunSpeedControl.Create(settingsPanel.transform, new Vector2(0.5f, 0.5f),
+                Vector2.zero, 324f, null, PanelBg, NeonCyan);
+            settingsPanel.SetActive(false);
+            settingsButton.onClick.AddListener(() => settingsPanel.SetActive(!settingsPanel.activeSelf));
         }
 
         private void CreateMenuUI()
@@ -454,7 +513,7 @@ namespace ActiveMotion3D.EndlessRunner.UI
 
             // Initialize both labels
             UpdateModeLabel();
-            UpdateCharacterLabel();
+            UpdateCharacterDisplay(FindAnyObjectByType<CharacterSelector>());
 
             // Mode description (centered below columns)
             modeDescription = CreateText(card.transform, "", 14,

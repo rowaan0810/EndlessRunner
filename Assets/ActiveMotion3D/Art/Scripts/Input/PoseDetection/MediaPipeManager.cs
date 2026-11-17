@@ -43,7 +43,7 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
         public PoseLandmark[] CurrentLandmarks { get; private set; }
 
         /// <summary>Timestamp of the latest detection in milliseconds.</summary>
-        public float CurrentTimestamp { get; private set; }
+        public long CurrentTimestamp { get; private set; }
 
         /// <summary>Whether the webcam is active and detection is running.</summary>
         public bool IsRunning { get; private set; }
@@ -55,7 +55,7 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
         public WebCamTexture WebcamTexture { get; private set; }
 
         /// <summary>CPU texture copied once per pose frame and shared with hand detection.</summary>
-        public Texture2D SharedInputTexture => inputTexture;
+        public Texture2D SharedInputTexture => webcamFrame.Texture;
 
         /// <summary>Increments whenever SharedInputTexture receives a fresh webcam frame.</summary>
         public uint FrameId { get; private set; }
@@ -80,7 +80,7 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
 
         // MediaPipe internals
         private PoseLandmarker poseLandmarker;
-        private Texture2D inputTexture;
+        private readonly WebcamFrame webcamFrame = new WebcamFrame();
         private PoseLandmarkerResult latestResult;
         private bool isInitialized;
         private bool isStarting;
@@ -119,6 +119,7 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
             isStarting = false;
             IsRunning = false;
             PersonDetected = false;
+            CurrentLandmarks = null;
             StatusMessage = "Stopped";
 
             if (ownsWebcam && WebcamTexture != null)
@@ -138,11 +139,7 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
                 poseLandmarker = null;
             }
 
-            if (inputTexture != null)
-            {
-                Destroy(inputTexture);
-                inputTexture = null;
-            }
+            webcamFrame.Dispose();
         }
 
         private IEnumerator InitializePipeline()
@@ -225,7 +222,6 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
                 }
             }
 
-            inputTexture = new Texture2D(WebcamTexture.width, WebcamTexture.height, TextureFormat.RGBA32, false);
             IsRunning = true;
             isStarting = false;
             StatusMessage = "Running";
@@ -263,23 +259,20 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
             nextInferenceTime = now + 1f / Mathf.Max(1, maxInferenceFps);
 
             // Copy once; HandGestureManager consumes this same texture.
-            inputTexture.SetPixels32(WebcamTexture.GetPixels32());
-            inputTexture.Apply();
+            webcamFrame.Capture(WebcamTexture);
             FrameId++;
 
             // Build MediaPipe Image directly from Texture2D
             // Ensure monotonically increasing timestamps
-            long timestampMs = (long)(Time.realtimeSinceStartup * 1000);
+            long timestampMs = (long)(Time.realtimeSinceStartupAsDouble * 1000);
             if (timestampMs <= lastTimestampMs) timestampMs = lastTimestampMs + 1;
             lastTimestampMs = timestampMs;
 
-            var imageProcessingOptions = new Mediapipe.Tasks.Vision.Core.ImageProcessingOptions(rotationDegrees: 0);
-
-            using (var image = new Mediapipe.Image(inputTexture))
+            using (var image = new Mediapipe.Image(SharedInputTexture))
             {
                 try
                 {
-                    if (poseLandmarker.TryDetectForVideo(image, timestampMs, imageProcessingOptions, ref latestResult))
+                    if (poseLandmarker.TryDetectForVideo(image, timestampMs, null, ref latestResult))
                     {
                         ProcessResult(timestampMs);
                     }
@@ -293,6 +286,7 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
                 {
                     Debug.LogWarning($"MediaPipeManager: Detection error: {e.Message}");
                     PersonDetected = false;
+                    CurrentLandmarks = null;
                 }
             }
         }

@@ -7,6 +7,7 @@ using UnityEngine;
 using ActiveMotion3D.EndlessRunner.Core;
 using ActiveMotion3D.EndlessRunner.Collectibles;
 using ActiveMotion3D.EndlessRunner.Environment;
+using ActiveMotion3D.EndlessRunner.Input;
 
 namespace ActiveMotion3D.EndlessRunner.Obstacles
 {
@@ -62,8 +63,6 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
         [SerializeField, Min(1f)] private float punchTargetHitDistance = 10f;
         [Tooltip("Minimum real time the yellow box remains approachable, compensating for webcam and MediaPipe latency.")]
         [SerializeField, Range(0.25f, 2f)] private float punchTargetMinimumReactionSeconds = 0.85f;
-        [Tooltip("Enable when the webcam reports vertical pose coordinates in the opposite direction. Matches PoseInput on this camera.")]
-        [SerializeField] private bool invertPunchVerticalDirection = true;
 
         [Header("Lane Settings")]
         [SerializeField] private float laneWidth = 3.2f;         // Must match PlayerController
@@ -102,6 +101,9 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
         private float nextPunchTargetTime;
         private float nextHumanTetrisTime;
         private PunchTargetSide lastPunchSide = PunchTargetSide.Right;
+
+        private bool ShouldSpawnHumanTetris => spawnHumanTetris &&
+            (InputManager.Instance?.CurrentMode ?? InputModeSelection.Current) == InputMode.Webcam;
 
         // Cached shaders for creating materials
         private Shader cachedShader;
@@ -168,13 +170,19 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
         {
             // Keep the global raised/not-raised gate current even while no cube
             // is yellow. A continuously held arm still cannot score later cubes.
-            PunchArmInput.SetInvertVerticalDirection(invertPunchVerticalDirection);
             PunchArmInput.UpdateState();
 
             if (GameManager.Instance == null || GameManager.Instance.State != GameState.Playing)
                 return;
 
             bool explosiveEncounter = UpdateSheerHeartAttack();
+            bool poseWallApproaching = HasActivePoseWall();
+            if (poseWallApproaching)
+            {
+                // Keep the gap until the wall is actually cleared, even if the player slows down.
+                nextSpawnTime = Mathf.Max(nextSpawnTime, Time.time + 1.5f);
+                nextPunchTargetTime = Mathf.Max(nextPunchTargetTime, Time.time + 1.5f);
+            }
 
             // Reserve empty track for the faster explosive, including its approach.
             if (!explosiveEncounter && spawnObstacles && Time.time >= nextSpawnTime && IsHumanTetrisPreludeClear())
@@ -200,7 +208,8 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
                 ScheduleNextPunchTarget();
             }
 
-            if (!explosiveEncounter && spawnHumanTetris && Time.time >= nextHumanTetrisTime)
+            if (!explosiveEncounter && !poseWallApproaching && ShouldSpawnHumanTetris
+                && Time.time >= nextHumanTetrisTime)
             {
                 SpawnHumanTetris();
                 ScheduleNextHumanTetris();
@@ -233,7 +242,7 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
             foreach (Obstacle obstacle in poolBarrierHigh) if (obstacle.gameObject.activeSelf) return true;
             foreach (Obstacle obstacle in poolBarrierFull) if (obstacle.gameObject.activeSelf) return true;
             foreach (Obstacle obstacle in poolMenacingSigns) if (obstacle.gameObject.activeSelf) return true;
-            foreach (HumanTetrisWall wall in humanTetrisPool) if (wall.gameObject.activeSelf) return true;
+            if (HasActivePoseWall()) return true;
             foreach (PunchTarget target in punchTargetPool) if (target.gameObject.activeSelf) return true;
 
             if (sheerHeartAttack == null) sheerHeartAttack = Instantiate(sheerHeartAttackPrefab, transform);
@@ -264,7 +273,14 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
         {
             // Reserve a few seconds of empty track before the wall. Obstacles that
             // arrive almost together would make the pose challenge unfair.
-            return !spawnHumanTetris || nextHumanTetrisTime - Time.time > 3f;
+            return !ShouldSpawnHumanTetris || nextHumanTetrisTime - Time.time > 3f;
+        }
+
+        private bool HasActivePoseWall()
+        {
+            foreach (HumanTetrisWall wall in humanTetrisPool)
+                if (wall.gameObject.activeSelf) return true;
+            return false;
         }
 
         private void SpawnHumanTetris()
@@ -277,13 +293,6 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
             const int lane = 1;
             HumanTetrisPose pose = (HumanTetrisPose)Random.Range(0, 6);
             wall.Setup(new Vector3(0f, 0f, spawnDistance), lane, pose);
-
-            // Keep ordinary obstacles away from the pose gate so the instruction is readable
-            // and the player is never asked to jump or duck while matching the silhouette.
-            float speed = GameSpeed.Instance != null ? GameSpeed.Instance.Current : 10f;
-            nextSpawnTime = Mathf.Max(nextSpawnTime, Time.time + spawnDistance / Mathf.Max(speed, 1f) + 1.5f);
-            nextPunchTargetTime = Mathf.Max(nextPunchTargetTime,
-                Time.time + spawnDistance / Mathf.Max(speed, 1f) + 1.5f);
         }
 
         private void SpawnPunchTarget()

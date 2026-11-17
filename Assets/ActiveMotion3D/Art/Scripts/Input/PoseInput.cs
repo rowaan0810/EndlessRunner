@@ -1,8 +1,8 @@
 // PoseInput.cs — Implements IGameInput using webcam HAND + BODY detection.
 //
 // GESTURES (Hand Landmarker + Pose Landmarker):
-//   Right Index Pointing Up ☝️ → JUMP
-//   Open Palm ✋ → DUCK
+//   Index pointing up/down → JUMP / DUCK
+//   Both palms / V sign / thumbs down → PAUSE / RESUME / QUIT
 //   Shoulders rise → JUMP (unless a two-arm Human Tetris pose is held)
 //   Shoulders sink (squat) → DUCK
 //
@@ -11,6 +11,7 @@
 
 using UnityEngine;
 using UnityEngine.Serialization;
+using ActiveMotion3D.EndlessRunner.Core;
 using ActiveMotion3D.EndlessRunner.Input.PoseDetection;
 
 namespace ActiveMotion3D.EndlessRunner.Input
@@ -51,7 +52,9 @@ namespace ActiveMotion3D.EndlessRunner.Input
         // Hand gestures must remain stable briefly before they can trigger an action.
         private HandGesture lastGesture = HandGesture.None;
         private HandGesture handGestureCandidate = HandGesture.None;
-        private float handGestureCandidateSince;
+        private long handGestureCandidateSince;
+        private const int MaxGestureFrameAgeMs = 250;
+        private const int QuitGestureHoldMs = 750;
         private float lastJumpTime = -999f;
         private float lastDuckTime = -999f;
         private const float COOLDOWN = 0.4f;
@@ -86,8 +89,6 @@ namespace ActiveMotion3D.EndlessRunner.Input
         [SerializeField, Range(0f, 1f)] private float bodyVerticalResponsiveness = 0.98f;
         [Tooltip("Number of consecutive pose frames required before jump or duck fires. Use 1 for immediate response.")]
         [SerializeField, Range(1, 8)] private int bodyConfirmationFrames = 1;
-        [Tooltip("Enable only if the camera reports vertical pose coordinates in the opposite direction.")]
-        [SerializeField] private bool invertBodyVerticalDirection = true;
         [Tooltip("Prevents any Human Tetris arm pose from also firing a jump. Uses wrists first and elbows when hands leave the camera frame.")]
         [FormerlySerializedAs("suppressJumpWhenBothArmsRaised")]
         [SerializeField] private bool suppressJumpWhenHumanTetrisArmPose = true;
@@ -120,7 +121,7 @@ namespace ActiveMotion3D.EndlessRunner.Input
         private float smoothedTorsoX;
         private float neutralTorsoX;
         private bool hasLaneCalibration;
-        private float lastProcessedPoseTimestamp = -1f;
+        private long lastProcessedPoseTimestamp = -1;
         private float poseMissingTime;
         private float calibrationXSum;
         private float calibrationLeftShoulderYSum;
@@ -144,6 +145,7 @@ namespace ActiveMotion3D.EndlessRunner.Input
 
         // For HUD display
         public HandGesture CurrentGesture { get; private set; } = HandGesture.None;
+        public HandGesture ConfirmedGesture { get; private set; }
         public int FingersExtended { get; private set; }
         public float HandX { get; private set; } = 0.5f;
         public float BodyVerticalOffset { get; private set; }
@@ -162,6 +164,14 @@ namespace ActiveMotion3D.EndlessRunner.Input
             // Never carry a jump/duck request from the previous run into a restart.
             jumpRequested = false;
             duckRequested = false;
+            handGestureCandidate = HandGesture.None;
+            lastGesture = HandGesture.None;
+            ConfirmedGesture = HandGesture.None;
+            ResetPoseCalibration();
+        }
+
+        private void ResetPoseCalibration()
+        {
             hasLaneCalibration = false;
             calibrationXSum = 0f;
             calibrationLeftShoulderYSum = 0f;
@@ -171,7 +181,7 @@ namespace ActiveMotion3D.EndlessRunner.Input
             calibrationSamplesCollected = 0;
             hipCalibrationSamplesCollected = 0;
             hasHipVerticalCalibration = false;
-            lastProcessedPoseTimestamp = -1f;
+            lastProcessedPoseTimestamp = -1;
             poseMissingTime = 0f;
             desiredLane = 1;
             desiredHorizontalPosition = 0f;
@@ -184,72 +194,23 @@ namespace ActiveMotion3D.EndlessRunner.Input
             bodyVerticalGestureReady = false;
             bodyGestureCandidate = BodyVerticalGesture.None;
             bodyGestureCandidateFrames = 0;
-            handGestureCandidate = HandGesture.None;
-            lastGesture = HandGesture.None;
         }
 
         private void Update()
         {
-            // ── Hand gesture detection (jump/duck) ──
-            var hgm = HandGestureManager.Instance;
-            if (hgm != null && hgm.IsRunning && hgm.CurrentHands.Count > 0)
+            var mpm = MediaPipeManager.Instance;
+            var state = GameManager.Instance?.State;
+            UpdateGesture();
+            if (state != GameState.Playing)
             {
-                var hand = hgm.CurrentHands[0];
-                CurrentGesture = hand.gesture;
-                FingersExtended = hand.fingersExtended;
-                HandX = hand.handCenterX;
-
-                float now = Time.time;
-
-                if (hand.gesture != handGestureCandidate)
-                {
-                    handGestureCandidate = hand.gesture;
-                    handGestureCandidateSince = now;
-                }
-
-                bool gestureStable = now - handGestureCandidateSince >= handGestureHoldSeconds;
-
-                // Right Index Pointing Up = JUMP (auto-repeats every COOLDOWN while held)
-                // MediaPipe selfie mode often returns 'Left' for the right hand, so we check both or rely on the hand position if needed, 
-                // but checking for 'Right' or 'Left' will just ensure it's a pointing up gesture. Let's strictly check 'Right' per user request, 
-                // but fallback to 'Left' if MediaPipe mirrors it. Actually, we'll just check the handedness property if it matches 'Right' or 'Left' depending on the mirror.
-                // For safety we'll accept pointing up on either hand if the label is flipped, or specifically check "Right" or "Left" based on the user's view.
-                bool isRightHand = hand.handedness.Equals("Right", System.StringComparison.OrdinalIgnoreCase) || hand.handedness.Equals("Left", System.StringComparison.OrdinalIgnoreCase);
-
-                if (gestureStable && handGestureCandidate == HandGesture.PointingUp && lastGesture != HandGesture.PointingUp &&
-                    isRightHand && BodyVerticalOffset > -bodyVerticalResetThreshold &&
-                    !IsHumanTetrisArmPose() &&
-                    now - lastJumpTime > COOLDOWN)
-                {
-                    jumpRequested = true;
-                    lastJumpTime = now;
-                    if (logInputEvents)
-                        Debug.Log($"[PoseInput] JUMP! (Native Gesture: {hand.rawGestureCategory}, Hand: {hand.handedness})");
-                }
-
-                // Open Palm = DUCK (auto-repeats every COOLDOWN while held)
-                if (gestureStable && handGestureCandidate == HandGesture.OpenPalm && lastGesture != HandGesture.OpenPalm &&
-                    now - lastDuckTime > COOLDOWN)
-                {
-                    duckRequested = true;
-                    lastDuckTime = now;
-                    if (logInputEvents)
-                        Debug.Log($"[PoseInput] DUCK! (Native Gesture: {hand.rawGestureCategory})");
-                }
-
-                if (gestureStable)
-                    lastGesture = handGestureCandidate;
+                jumpRequested = false;
+                duckRequested = false;
+                if (state == GameState.Paused) return;
             }
             else
-            {
-                CurrentGesture = HandGesture.None;
-                FingersExtended = 0;
-                handGestureCandidate = HandGesture.None;
-                lastGesture = HandGesture.None;
-            }
+                ApplyFingerGesture();
 
             // ── Lane detection from body pose (lean left/right) ──
-            var mpm = MediaPipeManager.Instance;
             if (mpm != null && mpm.IsRunning && mpm.CurrentLandmarks != null)
             {
                 var lm = mpm.CurrentLandmarks;
@@ -324,8 +285,12 @@ namespace ActiveMotion3D.EndlessRunner.Input
 
                     smoothedTorsoX = Mathf.Lerp(smoothedTorsoX, rawX, laneResponsiveness);
                     float offsetInShoulderWidths = (smoothedTorsoX - neutralTorsoX) / shoulderWidth;
-                    ProcessBodyVerticalGesture(leftShoulderY, rightShoulderY,
-                        lm[23].y, lm[24].y, hipsReliable);
+                    if (state == GameState.Playing &&
+                        CurrentGesture != HandGesture.BothPalms && CurrentGesture != HandGesture.ThumbsDown)
+                    {
+                        ProcessBodyVerticalGesture(leftShoulderY, rightShoulderY,
+                            lm[23].y, lm[24].y, hipsReliable);
+                    }
 
                     if (horizontalControlMode == HorizontalControlMode.Continuous)
                     {
@@ -370,8 +335,75 @@ namespace ActiveMotion3D.EndlessRunner.Input
                 poseMissingTime += Time.deltaTime;
                 if (poseMissingTime >= 0.75f)
                 {
-                    RecenterHorizontal();
+                    ResetPoseCalibration();
                 }
+            }
+        }
+
+        private void UpdateGesture()
+        {
+            long now = (long)(Time.realtimeSinceStartupAsDouble * 1000);
+            long sampleTime = now;
+            var handManager = HandGestureManager.Instance;
+            var observed = HandGesture.None;
+            FingersExtended = 0;
+            HandX = 0.5f;
+            if (handManager != null && handManager.IsRunning &&
+                now - handManager.CurrentTimestamp <= MaxGestureFrameAgeMs)
+            {
+                sampleTime = handManager.CurrentTimestamp;
+                int palms = 0;
+                int priority = 0;
+                foreach (var hand in handManager.CurrentHands)
+                {
+                    if (hand.gesture == HandGesture.OpenPalm) palms++;
+                    int handPriority = hand.gesture switch
+                    {
+                        HandGesture.ThumbsDown => 4,
+                        HandGesture.Victory => 3,
+                        HandGesture.PointingUp or HandGesture.PointingDown => 2,
+                        _ => 1
+                    };
+                    if (handPriority <= priority) continue;
+                    priority = handPriority;
+                    observed = hand.gesture;
+                    FingersExtended = hand.fingersExtended;
+                    HandX = hand.handCenterX;
+                }
+                if (palms == 2) observed = HandGesture.BothPalms;
+            }
+
+            ConfirmedGesture = HandGesture.None;
+            CurrentGesture = observed;
+            if (observed != handGestureCandidate)
+            {
+                handGestureCandidate = observed;
+                handGestureCandidateSince = sampleTime;
+            }
+
+            // Measure the hold in camera time so it works while the game is paused
+            // and a frozen camera frame cannot complete a gesture.
+            float holdMs = observed == HandGesture.ThumbsDown ? QuitGestureHoldMs : handGestureHoldSeconds * 1000f;
+            if (sampleTime - handGestureCandidateSince < holdMs || observed == lastGesture) return;
+
+            lastGesture = observed;
+            ConfirmedGesture = observed;
+        }
+
+        private void ApplyFingerGesture()
+        {
+            float now = Time.time;
+            if (ConfirmedGesture == HandGesture.PointingUp && now - lastJumpTime > COOLDOWN)
+            {
+                jumpRequested = true;
+                lastJumpTime = now;
+                if (logInputEvents) Debug.Log("[PoseInput] Jump (index up)");
+            }
+            else if (ConfirmedGesture == HandGesture.PointingDown && now - lastDuckTime > COOLDOWN)
+            {
+                duckRequested = true;
+                lastDuckTime = now;
+                if (logInputEvents) Debug.Log("[PoseInput] Duck (index down)");
             }
         }
 
@@ -395,11 +427,6 @@ namespace ActiveMotion3D.EndlessRunner.Input
             // cancel the movement. Positive delta means up; negative means down.
             leftShoulderDelta = neutralLeftShoulderY - smoothedLeftShoulderY;
             rightShoulderDelta = neutralRightShoulderY - smoothedRightShoulderY;
-            if (invertBodyVerticalDirection)
-            {
-                leftShoulderDelta = -leftShoulderDelta;
-                rightShoulderDelta = -rightShoulderDelta;
-            }
 
             // Use the weaker shoulder only when both shoulders agree on direction.
             // Raising just one arm therefore does not look like a whole-body jump.
@@ -419,11 +446,6 @@ namespace ActiveMotion3D.EndlessRunner.Input
                 smoothedRightHipY = Mathf.Lerp(smoothedRightHipY, currentRightHipY, bodyVerticalResponsiveness);
                 float leftHipDelta = neutralLeftHipY - smoothedLeftHipY;
                 float rightHipDelta = neutralRightHipY - smoothedRightHipY;
-                if (invertBodyVerticalDirection)
-                {
-                    leftHipDelta = -leftHipDelta;
-                    rightHipDelta = -rightHipDelta;
-                }
                 if (leftHipDelta > 0f && rightHipDelta > 0f)
                     combinedHipVerticalDelta = Mathf.Min(leftHipDelta, rightHipDelta);
             }
@@ -529,7 +551,7 @@ namespace ActiveMotion3D.EndlessRunner.Input
             float upwardSign = landmarks[nose].visibility >= minimumShoulderVisibility &&
                                 Mathf.Abs(landmarks[nose].y - shoulderY) >= 0.015f
                 ? Mathf.Sign(landmarks[nose].y - shoulderY)
-                : (invertBodyVerticalDirection ? 1f : -1f);
+                : -1f;
 
             float shoulderWidth = Mathf.Max(Mathf.Abs(landmarks[leftShoulder].x - landmarks[rightShoulder].x), 0.08f);
             return ArmFormsHumanTetrisPose(landmarks, leftShoulder, leftElbow, leftWrist,

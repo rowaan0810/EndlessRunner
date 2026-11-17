@@ -38,6 +38,9 @@ namespace ActiveMotion3D.EndlessRunner.Core
         [SerializeField, Range(0f, 1f)] private float slideVolume = 1f;
 
         private readonly Dictionary<AudioClip, Vector2> clipLevels = new Dictionary<AudioClip, Vector2>();
+        private double hitEndsAtDspTime;
+
+        internal bool IsHitPlaying => AudioSettings.dspTime < hitEndsAtDspTime;
 
         private void Awake()
         {
@@ -61,7 +64,23 @@ namespace ActiveMotion3D.EndlessRunner.Core
         }
 
         public void PlayCoin() => Play(coinClip, coinVolume);
-        public void PlayHit() => Play(hitClip, hitVolume);
+        public void PlayHit()
+        {
+            hitEndsAtDspTime = 0;
+            Play(hitClip, hitVolume);
+            if (hitClip == null || source == null || !source.isActiveAndEnabled || source.mute ||
+                masterVolume <= 0f || hitVolume <= 0f || source.volume <= 0f)
+                return;
+
+            float pitch = Mathf.Abs(source.pitch);
+            if (pitch <= 0f) return;
+
+            // Allow one mixer block for PlayOneShot to reach the audio thread.
+            AudioSettings.GetDSPBufferSize(out int bufferLength, out _);
+            int sampleRate = AudioSettings.outputSampleRate;
+            double bufferSeconds = sampleRate > 0 ? (double)bufferLength / sampleRate : 0;
+            hitEndsAtDspTime = AudioSettings.dspTime + (double)hitClip.length / pitch + bufferSeconds;
+        }
         public void PlayPunch() => Play(punchClip != null ? punchClip : coinClip, punchVolume);
         public void PlaySuccess() => Play(successClip, successVolume);
         public void PlayJump() => Play(jumpClip, jumpVolume);

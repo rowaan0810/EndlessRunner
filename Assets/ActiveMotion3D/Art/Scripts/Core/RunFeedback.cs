@@ -1,4 +1,3 @@
-using System.Globalization;
 using ActiveMotion3D.EndlessRunner.Obstacles;
 
 namespace ActiveMotion3D.EndlessRunner.Core
@@ -18,6 +17,7 @@ namespace ActiveMotion3D.EndlessRunner.Core
         public float LastLaneChange = float.NegativeInfinity;
         public string Failure { get; private set; } = "The run ended. The cause is unknown.";
         public string Correction { get; private set; } = "Focus on the next obstacle and read its cue before moving.";
+        private string alternateCorrection = "Look farther down the track so you can react before the next obstacle is close.";
 
         public void ClearObstacle(ObstacleType type)
         {
@@ -45,26 +45,29 @@ namespace ActiveMotion3D.EndlessRunner.Core
                 case ObstacleType.MenacingRoadSigns:
                 case ObstacleType.BarrierFull:
                     string obstacle = type == ObstacleType.MenacingRoadSigns ? "Menacing Road Sign" : "full barrier";
-                    Failure = $"You collided with a {obstacle} in the {laneName} lane.";
+                    Failure = $"You hit a {obstacle} in the {laneName} lane.";
                     if (time - LastLaneChange <= 0.45f)
                         Failure += " You began changing lanes shortly before impact.";
                     Correction = "Start moving toward an open lane sooner.";
+                    alternateCorrection = "Pick your escape lane as soon as you see a blocker ahead.";
                     break;
                 case ObstacleType.SheerHeartAttack:
                 case ObstacleType.BarrierLow:
                     string hazard = type == ObstacleType.SheerHeartAttack ? "Sheer Heart Attack" : "a low barrier";
-                    Failure = $"You collided with {hazard} in the {laneName} lane.";
+                    Failure = $"You hit {hazard} in the {laneName} lane.";
                     bool landedBeforeImpact = grounded && time - LastJump <= 1.4f;
                     if (landedBeforeImpact) Failure += " You jumped and were already back on the ground.";
-                    Correction = landedBeforeImpact ? "Time the jump later so you are airborne at the obstacle."
-                        : "Time the jump so you reach clearance before impact.";
-                    if (type == ObstacleType.SheerHeartAttack)
-                        Correction += " An open adjacent lane is also an option.";
+                    Correction = landedBeforeImpact ? "Jump later so you stay airborne over the obstacle."
+                        : "Jump in time to clear the obstacle.";
+                    alternateCorrection = type == ObstacleType.SheerHeartAttack
+                        ? "Move to an open lane before Sheer Heart Attack reaches you."
+                        : "If the next lane is clear, change lanes before you reach the low barrier.";
                     break;
                 case ObstacleType.BarrierHigh:
-                    Failure = $"You collided with a high barrier in the {laneName} lane.";
+                    Failure = $"You hit a high barrier in the {laneName} lane.";
                     if (!ducking && time - LastDuck <= 1.4f) Failure += " Your crouch had already ended.";
                     Correction = "Time the crouch to stay low as the barrier passes.";
+                    alternateCorrection = "If the next lane is open, move out of the barrier's lane early.";
                     break;
             }
         }
@@ -74,31 +77,49 @@ namespace ActiveMotion3D.EndlessRunner.Core
             Failure = $"You hit a Human Tetris wall requiring {pose}.";
             if (!keyboard && !reliable)
             {
-                Failure += " Tracking was unreliable at the wall, so your pose could not be confirmed.";
+                Failure += " The camera couldn't confirm your pose.";
                 Correction = "Keep shoulders and arms visible to the camera while matching the silhouette.";
+                alternateCorrection = "Step back until the preview shows both arms, then try the pose again.";
                 return;
             }
 
             if (matchAge > grace && matchAge < float.PositiveInfinity)
-                Failure += $" The last detected match expired (match age {Number(matchAge)} seconds, grace {Number(grace)} seconds).";
+                Failure += " Your last matching pose expired too soon.";
             else
                 Failure += " The required match was not registered in time.";
             Correction = keyboard ? $"Hold the {key} key for that wall until you pass through."
                 : "Match the silhouette and hold the pose until you pass through.";
+            alternateCorrection = keyboard ? "Read the key on the wall as soon as it appears so you have time to react."
+                : "Start matching the silhouette while the wall is still approaching.";
         }
 
-        public string Describe(GameManager game, string mode)
+        internal readonly struct Report
         {
-            return $"Controls: {mode}.\nMeasured result: {Overview(game, mode)}\n" +
-                $"Final encounter: {Failure}\nNext action: {Correction}";
+            public readonly string Mode, Overview, Diagnosis;
+            public readonly string[] Tips;
+
+            public Report(string mode, string overview, string diagnosis, string[] tips)
+            {
+                Mode = mode;
+                Overview = overview;
+                Diagnosis = diagnosis;
+                Tips = tips;
+            }
         }
 
-        private string Overview(GameManager game, string mode)
+        public Report Describe(GameManager game, string mode)
+        {
+            string[] tips = EarlyPunchMisses >= 2
+                ? new[] { Correction, alternateCorrection, "Wait for the punch target to light up before you strike." }
+                : new[] { Correction, alternateCorrection };
+            return new Report(mode, Overview(game), Failure, tips);
+        }
+
+        private string Overview(GameManager game)
         {
             if (EarlyPunchMisses >= 2)
             {
-                string input = mode == "Keyboard" ? "a matching key press" : "a matching arm raise";
-                return $"You hit {PunchHits} of {PunchHits + PunchMisses} punch targets, and {EarlyPunchMisses} misses followed {input} before the target lit up.";
+                return $"You hit {PunchHits} of {PunchHits + PunchMisses} punch targets and struck too early {EarlyPunchMisses} times.";
             }
 
             int clears = LaneClears + JumpObstacleClears + DuckObstacleClears + PoseClears;
@@ -109,6 +130,5 @@ namespace ActiveMotion3D.EndlessRunner.Core
             return $"You ran {game.DistanceScore:F0} meters and collected {game.CoinScore} coins.";
         }
 
-        private static string Number(float value) => value.ToString("0.##", CultureInfo.InvariantCulture);
     }
 }

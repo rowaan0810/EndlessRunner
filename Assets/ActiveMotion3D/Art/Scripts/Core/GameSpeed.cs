@@ -1,26 +1,46 @@
 // GameSpeed.cs — Global speed control for the endless runner.
 // All moving world objects (track, obstacles, coins) read from GameSpeed.Current.
 
+using System;
 using UnityEngine;
 
 namespace ActiveMotion3D.EndlessRunner.Core
 {
     /// <summary>
-    /// Controls the global game speed. Speed increases over time during gameplay.
+    /// Controls the global game speed using automatic progression or a fixed pace.
     /// Track segments, obstacles, and collectibles all move at this speed.
     /// </summary>
     public class GameSpeed : MonoBehaviour
     {
         public static GameSpeed Instance { get; private set; }
 
+        private const string FixedSpeedPref = "MoriohFixedRunSpeed";
+        internal const int FixedSpeedStep = 5;
+        internal const int HighestFixedSpeed = 50;
+        internal static event Action<int> FixedSpeedChanged;
+
+        internal static int SelectedFixedSpeed
+        {
+            get => Mathf.Clamp(PlayerPrefs.GetInt(FixedSpeedPref), 0, HighestFixedSpeed);
+            set
+            {
+                if (value == SelectedFixedSpeed) return;
+                PlayerPrefs.SetInt(FixedSpeedPref, value);
+                if (Instance != null && Instance.allowFixedRunSpeed)
+                    Instance.ApplyFixedSpeed(value);
+                FixedSpeedChanged?.Invoke(value);
+            }
+        }
+
         [Header("Speed Settings")]
         [SerializeField] private float baseSpeed = 10f;
         [SerializeField] private float acceleration = 0.3f;
         [SerializeField, Min(0f)] private float webcamAcceleration = 0.1f;
         [SerializeField] private float maxSpeed = 30f;
+        [SerializeField] private bool allowFixedRunSpeed;
 
         /// <summary>
-        /// The current world scroll speed. Increases over time during play.
+        /// The current world scroll speed in units per second.
         /// </summary>
         public float Current { get; private set; }
 
@@ -57,6 +77,7 @@ namespace ActiveMotion3D.EndlessRunner.Core
         public float NormalizedSpeed => Mathf.InverseLerp(baseSpeed, maxSpeed, Current);
 
         private float elapsedTime;
+        private int fixedSpeed;
         private bool isRunning;
 
         private void Awake()
@@ -67,23 +88,37 @@ namespace ActiveMotion3D.EndlessRunner.Core
                 return;
             }
             Instance = this;
+            if (allowFixedRunSpeed) fixedSpeed = SelectedFixedSpeed;
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this) Instance = null;
         }
 
         private void Update()
         {
-            if (!isRunning) return;
-
-            // In webcam mode, use very slow acceleration (0.1/s vs 0.3/s in keyboard)
-            var im = EndlessRunner.Input.InputManager.Instance;
-            if (im != null && im.CurrentMode == Input.InputMode.Webcam)
-            {
-                elapsedTime += Time.deltaTime;
-                Current = Mathf.Min(baseSpeed + (elapsedTime * webcamAcceleration), maxSpeed);
-                return;
-            }
+            if (!isRunning || fixedSpeed > 0) return;
 
             elapsedTime += Time.deltaTime;
-            Current = Mathf.Min(baseSpeed + (elapsedTime * acceleration), maxSpeed);
+            Current = CalculateSpeed();
+        }
+
+        private float CalculateSpeed()
+        {
+            if (fixedSpeed > 0) return fixedSpeed;
+
+            var im = EndlessRunner.Input.InputManager.Instance;
+            float rate = im != null && im.CurrentMode == Input.InputMode.Webcam
+                ? webcamAcceleration
+                : acceleration;
+            return Mathf.Min(baseSpeed + elapsedTime * rate, maxSpeed);
+        }
+
+        private void ApplyFixedSpeed(int speed)
+        {
+            fixedSpeed = speed;
+            if (isRunning) Current = CalculateSpeed();
         }
 
         /// <summary>
@@ -93,7 +128,7 @@ namespace ActiveMotion3D.EndlessRunner.Core
         {
             isRunning = true;
             elapsedTime = 0f;
-            Current = baseSpeed;
+            Current = CalculateSpeed();
         }
 
         /// <summary>
@@ -111,7 +146,7 @@ namespace ActiveMotion3D.EndlessRunner.Core
         {
             isRunning = false;
             elapsedTime = 0f;
-            Current = baseSpeed;
+            Current = CalculateSpeed();
         }
     }
 }

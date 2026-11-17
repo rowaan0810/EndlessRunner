@@ -118,14 +118,18 @@ namespace ActiveMotion3D.EndlessRunner.UI
 
             var hgm = HandGestureManager.Instance;
             bool active = GameManager.Instance?.State != GameState.GameOver &&
-                hgm != null && hgm.IsRunning && hgm.WebcamTexture != null;
+                hgm != null && hgm.IsRunning && hgm.PreviewTexture != null;
 
             hudPanel.SetActive(active);
             if (!active) return;
 
             // Update webcam feed
-            if (webcamImage != null && hgm.WebcamTexture != null)
-                webcamImage.texture = hgm.WebcamTexture;
+            if (webcamImage != null)
+            {
+                webcamImage.texture = hgm.PreviewTexture;
+                // The detector reads top-first rows, and the selfie preview mirrors X.
+                webcamImage.uvRect = new Rect(1f, 1f, -1f, -1f);
+            }
 
             // Draw hand skeleton
             DrawSkeleton(hgm);
@@ -145,8 +149,8 @@ namespace ActiveMotion3D.EndlessRunner.UI
                 gestureIndicator.color = gesture switch
                 {
                     HandGesture.PointingUp => JumpGreen,
-                    HandGesture.OpenPalm => DuckOrange,
-                    HandGesture.Fist => NeutralGrey,
+                    HandGesture.PointingDown => DuckOrange,
+                    HandGesture.BothPalms or HandGesture.Victory or HandGesture.ThumbsDown => NeonCyan,
                     _ => NeutralGrey,
                 };
             }
@@ -156,11 +160,12 @@ namespace ActiveMotion3D.EndlessRunner.UI
             {
                 (gestureLabel.text, gestureLabel.color) = gesture switch
                 {
-                    HandGesture.PointingUp => ("☝ POINT UP → JUMP", JumpGreen),
-                    HandGesture.OpenPalm => ("✋ OPEN PALM → DUCK", DuckOrange),
-                    HandGesture.Fist => ("✊ FIST", NeutralGrey),
-                    _ => (hgm != null && hgm.HandDetected ? "✋ HAND DETECTED" : "NO HAND",
-                          hgm != null && hgm.HandDetected ? NeonCyan : NeutralGrey),
+                    HandGesture.PointingUp => ("INDEX UP → JUMP", JumpGreen),
+                    HandGesture.PointingDown => ("INDEX DOWN → DUCK", DuckOrange),
+                    HandGesture.BothPalms => ("TWO PALMS → PAUSE", NeonCyan),
+                    HandGesture.Victory => ("V SIGN → RESUME", NeonCyan),
+                    HandGesture.ThumbsDown => ("HOLD THUMBS DOWN TO QUIT", NeonCyan),
+                    _ => hgm.HandDetected ? ("HAND DETECTED", NeonCyan) : ("NO HAND", NeutralGrey),
                 };
             }
 
@@ -193,12 +198,7 @@ namespace ActiveMotion3D.EndlessRunner.UI
                 var dot = landmarkDots[i];
                 dot.gameObject.SetActive(true);
 
-                // Convert normalized coords to local rect coords
-                // Mirror X to match the mirrored webcam display
-                float lx = (1f - landmarks[i].x) * w - w / 2f;
-                float ly = -(landmarks[i].y * h - h / 2f);
-
-                dot.rectTransform.anchoredPosition = new Vector2(lx, ly);
+                dot.rectTransform.anchoredPosition = PreviewPoint(landmarks[i].x, landmarks[i].y, w, h);
 
                 // Color fingertips differently
                 bool isTip = (i == 4 || i == 8 || i == 12 || i == 16 || i == 20);
@@ -215,22 +215,13 @@ namespace ActiveMotion3D.EndlessRunner.UI
                 var bone = boneLine[i];
                 bone.gameObject.SetActive(true);
 
-                float ax = (1f - landmarks[a].x) * w - w / 2f;
-                float ay = -(landmarks[a].y * h - h / 2f);
-                float bx = (1f - landmarks[b].x) * w - w / 2f;
-                float by = -(landmarks[b].y * h - h / 2f);
-
-                // Position at midpoint, rotate to connect the two points
-                float mx = (ax + bx) / 2f;
-                float my = (ay + by) / 2f;
-                float dx = bx - ax;
-                float dy = by - ay;
-                float len = Mathf.Sqrt(dx * dx + dy * dy);
-                float angle = Mathf.Atan2(dy, dx) * Mathf.Rad2Deg;
-
-                bone.rectTransform.anchoredPosition = new Vector2(mx, my);
-                bone.rectTransform.sizeDelta = new Vector2(len, 2f);
-                bone.rectTransform.localRotation = Quaternion.Euler(0, 0, angle);
+                Vector2 start = PreviewPoint(landmarks[a].x, landmarks[a].y, w, h);
+                Vector2 end = PreviewPoint(landmarks[b].x, landmarks[b].y, w, h);
+                Vector2 delta = end - start;
+                bone.rectTransform.anchoredPosition = (start + end) * 0.5f;
+                bone.rectTransform.sizeDelta = new Vector2(delta.magnitude, 2f);
+                bone.rectTransform.localRotation = Quaternion.Euler(0f, 0f,
+                    Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg);
             }
         }
 
@@ -295,7 +286,7 @@ namespace ActiveMotion3D.EndlessRunner.UI
 
                 Image dot = poseLandmarkDots[i];
                 dot.gameObject.SetActive(true);
-                dot.rectTransform.anchoredPosition = PosePoint(landmark, width, height);
+                dot.rectTransform.anchoredPosition = PreviewPoint(landmark.x, landmark.y, width, height);
                 float alpha = Mathf.Lerp(0.4f, 1f, Mathf.Clamp01(landmark.visibility));
                 dot.color = new Color(1f, 0.85f, 0.1f, alpha);
             }
@@ -309,8 +300,8 @@ namespace ActiveMotion3D.EndlessRunner.UI
                 if (!IsFinite(pointA.x) || !IsFinite(pointA.y) ||
                     !IsFinite(pointB.x) || !IsFinite(pointB.y)) continue;
 
-                Vector2 start = PosePoint(pointA, width, height);
-                Vector2 end = PosePoint(pointB, width, height);
+                Vector2 start = PreviewPoint(pointA.x, pointA.y, width, height);
+                Vector2 end = PreviewPoint(pointB.x, pointB.y, width, height);
                 Vector2 delta = end - start;
                 Image bone = poseBoneLines[i];
                 bone.gameObject.SetActive(true);
@@ -321,13 +312,10 @@ namespace ActiveMotion3D.EndlessRunner.UI
             }
         }
 
-        private static Vector2 PosePoint(PoseLandmark landmark, float width, float height)
+        private static Vector2 PreviewPoint(float x, float y, float width, float height)
         {
-            // Webcam display is mirrored horizontally. PoseLandmarker coordinates from
-            // this capture pipeline already use the preview's bottom-to-top Y direction,
-            // so do not apply the hand-landmarker Y inversion here.
-            return new Vector2((1f - landmark.x) * width - width * 0.5f,
-                landmark.y * height - height * 0.5f);
+            // MediaPipe uses a top-left origin. The selfie preview also mirrors X.
+            return new Vector2((0.5f - x) * width, (0.5f - y) * height);
         }
 
         private static bool IsFinite(float value)
@@ -365,7 +353,7 @@ namespace ActiveMotion3D.EndlessRunner.UI
 
             webcamImage = webcamObj.AddComponent<RawImage>();
             webcamImage.color = Color.white;
-            webcamImage.uvRect = new Rect(1, 0, -1, 1); // Mirror
+            webcamImage.uvRect = new Rect(1f, 1f, -1f, -1f);
 
             // === Skeleton overlay (parented to webcam so coords align) ===
             GameObject skeletonParent = new GameObject("Skeleton", typeof(RectTransform));

@@ -1,5 +1,4 @@
-// HandGestureManager.cs — Detects hand gestures using MediaPipe Hand Landmarker.
-// Detects OPEN PALM (fingers extended) and FIST (fingers curled) for game input.
+// HandGestureManager.cs — Classifies individual hands for gameplay input.
 //
 // Hand Landmarks (21 points per hand):
 //   0: WRIST
@@ -28,7 +27,11 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
         OpenPalm,
         ThumbsUp,
         Fist,
-        PointingUp
+        PointingUp,
+        PointingDown,
+        Victory,
+        BothPalms,
+        ThumbsDown
     }
 
     public struct HandGestureResult
@@ -43,8 +46,7 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
     }
 
     /// <summary>
-    /// Manages webcam + MediaPipe Hand Landmarker.
-    /// Detects open palm vs fist gestures for game input.
+    /// Manages webcam capture and MediaPipe hand gesture recognition.
     /// </summary>
     [DefaultExecutionOrder(-190)]
     public class HandGestureManager : MonoBehaviour
@@ -67,11 +69,12 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
         public List<HandGestureResult> CurrentHands { get; private set; } = new List<HandGestureResult>();
 
         /// <summary>Timestamp of latest detection in ms.</summary>
-        public float CurrentTimestamp { get; private set; }
+        public long CurrentTimestamp { get; private set; }
 
         public bool IsRunning { get; private set; }
         public bool HandDetected => CurrentHands.Count > 0;
         public WebCamTexture WebcamTexture { get; private set; }
+        public Texture2D PreviewTexture { get; private set; }
         public string StatusMessage { get; private set; } = "Not started";
 
         // Raw landmark data for HUD drawing
@@ -80,7 +83,7 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
 
         // MediaPipe internals
         private GestureRecognizer gestureRecognizer;
-        private Texture2D inputTexture;
+        private readonly WebcamFrame webcamFrame = new WebcamFrame();
         private GestureRecognizerResult latestResult;
         private bool isInitialized;
         private bool isStarting;
@@ -88,6 +91,7 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
         private long lastTimestampMs = -1;
         private float nextInferenceTime;
         private uint lastSharedFrameId;
+        private static readonly int[] FingerTips = { 8, 12, 16, 20 };
 
         private void Awake()
         {
@@ -112,7 +116,8 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
             StopAllCoroutines();
             isStarting = false;
             IsRunning = false;
-            CurrentHands.Clear();
+            ClearResults();
+            PreviewTexture = null;
             StatusMessage = "Stopped";
 
             if (ownsWebcam && WebcamTexture != null)
@@ -132,11 +137,7 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
                 gestureRecognizer = null;
             }
 
-            if (inputTexture != null)
-            {
-                Destroy(inputTexture);
-                inputTexture = null;
-            }
+            webcamFrame.Dispose();
         }
 
         private IEnumerator InitializePipeline()
@@ -220,7 +221,6 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
                 }
             }
 
-            inputTexture = new Texture2D(WebcamTexture.width, WebcamTexture.height, TextureFormat.RGBA32, false);
             IsRunning = true;
             isStarting = false;
             StatusMessage = "Running";
@@ -255,7 +255,8 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
 
             Texture2D sourceTexture;
             var poseManager = MediaPipeManager.Instance;
-            if (!ownsWebcam && poseManager != null && poseManager.SharedInputTexture != null)
+            if (poseManager != null && poseManager.WebcamTexture == WebcamTexture &&
+                poseManager.SharedInputTexture != null)
             {
                 if (poseManager.FrameId == lastSharedFrameId) return;
                 lastSharedFrameId = poseManager.FrameId;
@@ -263,38 +264,41 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
             }
             else
             {
-                if (inputTexture == null) return;
-                inputTexture.SetPixels32(WebcamTexture.GetPixels32());
-                inputTexture.Apply();
-                sourceTexture = inputTexture;
+                webcamFrame.Capture(WebcamTexture);
+                sourceTexture = webcamFrame.Texture;
             }
+            PreviewTexture = sourceTexture;
 
-            long timestampMs = (long)(Time.realtimeSinceStartup * 1000);
+            long timestampMs = (long)(Time.realtimeSinceStartupAsDouble * 1000);
             if (timestampMs <= lastTimestampMs) timestampMs = lastTimestampMs + 1;
             lastTimestampMs = timestampMs;
-
-            var imageProcessingOptions = new Mediapipe.Tasks.Vision.Core.ImageProcessingOptions(rotationDegrees: 0);
 
             using (var image = new Mediapipe.Image(sourceTexture))
             {
                 try
                 {
-                    if (gestureRecognizer.TryRecognizeForVideo(image, timestampMs, imageProcessingOptions, ref latestResult))
+                    if (gestureRecognizer.TryRecognizeForVideo(image, timestampMs, null, ref latestResult))
                     {
                         ProcessResult(timestampMs);
                     }
                     else
                     {
-                        CurrentHands.Clear();
-                        RawLandmarks = null;
-                        RawHandedness = null;
+                        ClearResults();
                     }
                 }
                 catch (Exception e)
                 {
                     Debug.LogWarning($"HandGestureManager: Detection error: {e.Message}");
+                    ClearResults();
                 }
             }
+        }
+
+        private void ClearResults()
+        {
+            CurrentHands.Clear();
+            RawLandmarks = null;
+            RawHandedness = null;
         }
 
         private void ProcessResult(long timestampMs)
@@ -302,11 +306,12 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
             CurrentHands.Clear();
             RawLandmarks = latestResult.handLandmarks;
             RawHandedness = latestResult.handedness;
+            CurrentTimestamp = timestampMs;
 
             if (latestResult.handLandmarks == null || latestResult.handLandmarks.Count == 0)
                 return;
 
-            CurrentTimestamp = timestampMs;
+            float aspect = (float)PreviewTexture.width / PreviewTexture.height;
 
             for (int h = 0; h < latestResult.handLandmarks.Count; h++)
             {
@@ -351,62 +356,7 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
                     }
                 }
 
-                HandGesture gesture = HandGesture.None;
-                
-                // Map native categories to our enum
-                string catLower = gestureCategory.ToLower();
-                if (catLower.Contains("pointing_up"))
-                    gesture = HandGesture.PointingUp;
-                else if (catLower.Contains("thumb_up") || catLower.Contains("thumb_down"))
-                    gesture = HandGesture.ThumbsUp;
-                else if (catLower.Contains("open_palm") || catLower.Contains("paper") || catLower.Contains("five"))
-                    gesture = HandGesture.OpenPalm;
-                else if (catLower.Contains("closed_fist") || catLower.Contains("rock"))
-                    gesture = HandGesture.Fist;
-
-                // MediaPipe's ML model often misclassifies "Index Pointing Up" as "Thumb_Down" or "None".
-                // We run a fallback heuristic to override it if the index finger is clearly extended while others are not.
-                float wristX = landmarks[0].x, wristY = landmarks[0].y;
-                int[] tips = { 8, 12, 16, 20 }; // Index, Middle, Ring, Pinky
-                int[] pips = { 6, 10, 14, 18 };
-                int extendedFingers = 0;
-                bool isIndexExtended = false;
-
-                for (int j = 0; j < 4; j++)
-                {
-                    float tipDist = Dist(landmarks[tips[j]].x, landmarks[tips[j]].y, wristX, wristY);
-                    float pipDist = Dist(landmarks[pips[j]].x, landmarks[pips[j]].y, wristX, wristY);
-                    bool extended = tipDist > pipDist * 1.12f;
-                    if (extended) extendedFingers++;
-                    if (j == 0 && extended) isIndexExtended = true; // Index finger
-                }
-
-                float indexDx = landmarks[8].x - wristX;
-                float indexDy = landmarks[8].y - wristY;
-                bool indexMostlyVertical = Mathf.Abs(indexDy) > Mathf.Abs(indexDx) * 1.2f;
-
-                // Reject unstable native PointingUp classifications before mapping.
-                if (gesture == HandGesture.PointingUp &&
-                    (!isIndexExtended || extendedFingers > 2 || !indexMostlyVertical))
-                {
-                    gesture = HandGesture.None;
-                }
-
-                if ((gesture == HandGesture.None || gesture == HandGesture.ThumbsUp) &&
-                    isIndexExtended && extendedFingers == 1 && indexMostlyVertical)
-                {
-                    gesture = HandGesture.PointingUp;
-                }
-                else if (extendedFingers >= 3)
-                {
-                    // Geometry wins over the classifier here. The stock gesture model
-                    // can label an open palm as Thumb_Up depending on camera angle.
-                    gesture = HandGesture.OpenPalm;
-                }
-                else if (gesture == HandGesture.None && extendedFingers == 0)
-                {
-                    gesture = HandGesture.Fist;
-                }
+                HandGesture gesture = ClassifyHand(landmarks, aspect, gestureCategory, out int extendedFingers);
 
                 // Debug log the raw category so we can see what the model is actually outputting
                 if (logGestureDebug)
@@ -425,10 +375,57 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
             }
         }
 
-        private static float Dist(float x1, float y1, float x2, float y2)
+        internal static HandGesture ClassifyHand(List<NLandmark> landmarks, float aspect, string category,
+            out int extendedFingers)
         {
-            float dx = x1 - x2, dy = y1 - y2;
-            return (float)Math.Sqrt(dx * dx + dy * dy);
+            Vector2 wrist = ImagePoint(landmarks[0], aspect);
+            bool indexExtended = false;
+            bool middleExtended = false;
+            extendedFingers = 0;
+            foreach (int tip in FingerTips)
+            {
+                Vector2 tipOffset = ImagePoint(landmarks[tip], aspect) - wrist;
+                Vector2 pipOffset = ImagePoint(landmarks[tip - 2], aspect) - wrist;
+                if (tipOffset.sqrMagnitude <= pipOffset.sqrMagnitude * (1.12f * 1.12f)) continue;
+
+                extendedFingers++;
+                if (tip == 8) indexExtended = true;
+                if (tip == 12) middleExtended = true;
+            }
+
+            if (indexExtended && extendedFingers == 1)
+            {
+                Vector2 direction = ImagePoint(landmarks[8], aspect) - ImagePoint(landmarks[5], aspect);
+                // Top-left image origin: smaller Y means up.
+                if (Mathf.Abs(direction.y) > Mathf.Abs(direction.x) * 1.2f)
+                    return direction.y < 0f ? HandGesture.PointingUp : HandGesture.PointingDown;
+            }
+
+            if (indexExtended && middleExtended && extendedFingers == 2)
+            {
+                Vector2 tips = ImagePoint(landmarks[8], aspect) - ImagePoint(landmarks[12], aspect);
+                Vector2 knuckles = ImagePoint(landmarks[5], aspect) - ImagePoint(landmarks[9], aspect);
+                if (tips.sqrMagnitude > knuckles.sqrMagnitude * (1.15f * 1.15f) ||
+                    string.Equals(category, "Victory", StringComparison.OrdinalIgnoreCase))
+                    return HandGesture.Victory;
+            }
+
+            if (extendedFingers == 4 ||
+                (extendedFingers == 3 && string.Equals(category, "Open_Palm", StringComparison.OrdinalIgnoreCase)))
+                return HandGesture.OpenPalm;
+
+            if (string.Equals(category, "Thumb_Down", StringComparison.OrdinalIgnoreCase))
+                return HandGesture.ThumbsDown;
+
+            if (string.Equals(category, "Thumb_Up", StringComparison.OrdinalIgnoreCase))
+                return HandGesture.ThumbsUp;
+
+            return extendedFingers == 0 ? HandGesture.Fist : HandGesture.None;
+        }
+
+        private static Vector2 ImagePoint(NLandmark landmark, float aspect)
+        {
+            return new Vector2(landmark.x * aspect, landmark.y);
         }
 
         private void OnDestroy()

@@ -101,6 +101,7 @@ namespace ActiveMotion3D.EndlessRunner.Core
         /// </summary>
         public void StartGame()
         {
+            StandCoachRuntime.Instance?.WarmOpening(StandCoachRuntime.IsKillerQueen);
             GameOverPresentationDelay = 0f;
             Time.timeScale = 1f;
             State = GameState.Playing;

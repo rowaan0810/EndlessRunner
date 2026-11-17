@@ -74,8 +74,6 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
         private bool lastRightRaised;
         private bool lastLeftHorizontal;
         private bool lastRightHorizontal;
-        private bool lastLeftDown;
-        private bool lastRightDown;
         private float lastUpwardYSign = 1f;
 
         public HumanTetrisPose RequiredPose => requiredPose;
@@ -151,8 +149,7 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
 
             Debug.Log($"Human Tetris failed: pose {requiredPose}, ready={poseReady}, " +
                       $"left[horizontal={lastLeftHorizontal}, raised={lastLeftRaised}], " +
-                      $"right[horizontal={lastRightHorizontal}, raised={lastRightRaised}], " +
-                      $"down[left={lastLeftDown}, right={lastRightDown}], upY={lastUpwardYSign}");
+                      $"right[horizontal={lastRightHorizontal}, raised={lastRightRaised}], upY={lastUpwardYSign}");
             bool keyboard = InputManager.Instance != null && InputManager.Instance.CurrentMode == InputMode.Keyboard;
             string pose = requiredPose switch
             {
@@ -175,8 +172,6 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
             lastRightRaised = false;
             lastLeftHorizontal = false;
             lastRightHorizontal = false;
-            lastLeftDown = false;
-            lastRightDown = false;
 
             // Keyboard fallback keeps wall/lane testing possible without starting a webcam.
             if (InputManager.Instance != null && InputManager.Instance.CurrentMode == InputMode.Keyboard)
@@ -195,102 +190,62 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
 
             float shoulderWidth = Mathf.Max(Mathf.Abs(lm[LeftShoulder].x - lm[RightShoulder].x), 0.08f);
             float imageAspectCorrection = 0.75f;
-            if (manager.WebcamTexture != null && manager.WebcamTexture.width > 0)
-                imageAspectCorrection = manager.WebcamTexture.height / (float)manager.WebcamTexture.width;
+            if (manager.SharedInputTexture != null)
+                imageAspectCorrection = manager.SharedInputTexture.height / (float)manager.SharedInputTexture.width;
             float upwardYSign = GetUpwardYSign(lm);
-            bool leftElbowVisible = lm[LeftElbow].visibility >= minimumElbowVisibility;
-            bool rightElbowVisible = lm[RightElbow].visibility >= minimumElbowVisibility;
-            bool leftWristVisible = lm[LeftWrist].visibility >= minimumWristVisibility;
-            bool rightWristVisible = lm[RightWrist].visibility >= minimumWristVisibility;
-            trackingReliable = (leftElbowVisible || leftWristVisible) && (rightElbowVisible || rightWristVisible);
-            bool leftRaised = IsArmRaised(lm, LeftShoulder, LeftElbow, LeftWrist,
-                shoulderWidth, imageAspectCorrection, upwardYSign, raisedMinimumDegrees);
-            bool rightRaised = IsArmRaised(lm, RightShoulder, RightElbow, RightWrist,
-                shoulderWidth, imageAspectCorrection, upwardYSign, raisedMinimumDegrees);
-            float leftOutwardDirection = Mathf.Sign(lm[LeftShoulder].x - lm[RightShoulder].x);
-            if (Mathf.Approximately(leftOutwardDirection, 0f)) leftOutwardDirection = 1f;
-            bool leftHorizontal = IsArmHorizontal(lm, LeftShoulder, LeftElbow, LeftWrist,
-                shoulderWidth, leftOutwardDirection, leftElbowVisible, leftWristVisible,
-                imageAspectCorrection, horizontalToleranceDegrees);
-            bool rightHorizontal = IsArmHorizontal(lm, RightShoulder, RightElbow, RightWrist,
-                shoulderWidth, -leftOutwardDirection, rightElbowVisible, rightWristVisible,
-                imageAspectCorrection, horizontalToleranceDegrees);
-            bool leftDown = IsArmDown(lm, LeftShoulder, LeftElbow, LeftWrist, shoulderWidth,
-                imageAspectCorrection, upwardYSign, 0.08f, minimumWristVisibility);
-            bool rightDown = IsArmDown(lm, RightShoulder, RightElbow, RightWrist, shoulderWidth,
-                imageAspectCorrection, upwardYSign, 0.08f, minimumWristVisibility);
+            var anatomicalLeft = (Shoulder: LeftShoulder, Elbow: LeftElbow, Wrist: LeftWrist);
+            var anatomicalRight = (Shoulder: RightShoulder, Elbow: RightElbow, Wrist: RightWrist);
+            bool leftAppearsOnScreenLeft = LM.LeftShoulderAppearsOnScreenLeft(lm);
+            var left = ReadArm(leftAppearsOnScreenLeft ? anatomicalLeft : anatomicalRight, 1f);
+            var right = ReadArm(leftAppearsOnScreenLeft ? anatomicalRight : anatomicalLeft, -1f);
 
-            lastLeftRaised = leftRaised;
-            lastRightRaised = rightRaised;
-            lastLeftHorizontal = leftHorizontal;
-            lastRightHorizontal = rightHorizontal;
-            lastLeftDown = leftDown;
-            lastRightDown = rightDown;
+            lastLeftRaised = left.Raised;
+            lastRightRaised = right.Raised;
+            lastLeftHorizontal = left.Horizontal;
+            lastRightHorizontal = right.Horizontal;
             lastUpwardYSign = upwardYSign;
-
-            return MatchesRequiredPose(requiredPose, leftRaised, rightRaised,
-                leftHorizontal, rightHorizontal, leftDown, rightDown);
-        }
-
-        private static bool MatchesRequiredPose(HumanTetrisPose pose,
-            bool mediaPipeLeftRaised, bool mediaPipeRightRaised,
-            bool mediaPipeLeftHorizontal, bool mediaPipeRightHorizontal,
-            bool mediaPipeLeftDown, bool mediaPipeRightDown)
-        {
-            // Match the screen-side silhouette, just like PunchArmInput: in this
-            // webcam pipeline MediaPipe's right arm is the user's perceived left.
-            // LeftArm* is drawn at negative X, so the user follows screen-left.
-            bool leftRaised = mediaPipeRightRaised;
-            bool rightRaised = mediaPipeLeftRaised;
-            bool leftHorizontal = mediaPipeRightHorizontal;
-            bool rightHorizontal = mediaPipeLeftHorizontal;
-            bool leftDown = mediaPipeRightDown;
-            bool rightDown = mediaPipeLeftDown;
-
-            return pose switch
+            trackingReliable = requiredPose switch
             {
-                // Pose categories are intentionally exclusive. A T pose must never
-                // pass as a V pose, and a two-arm action must never pass a one-arm gate.
-                HumanTetrisPose.BothArmsV => leftRaised && rightRaised &&
-                                             !leftHorizontal && !rightHorizontal,
-                // Only the displayed side may match. The opposite arm must be
-                // positively detected as lowered; missing data is not "down".
-                HumanTetrisPose.LeftArmHorizontal => leftHorizontal && !rightHorizontal && rightDown,
-                HumanTetrisPose.RightArmHorizontal => rightHorizontal && !leftHorizontal && leftDown,
-                HumanTetrisPose.BothArmsHorizontal => leftHorizontal && rightHorizontal,
-                HumanTetrisPose.LeftArmRaised => leftRaised && !leftHorizontal &&
-                    !rightRaised && !rightHorizontal && rightDown,
-                HumanTetrisPose.RightArmRaised => rightRaised && !rightHorizontal &&
-                    !leftRaised && !leftHorizontal && leftDown,
+                HumanTetrisPose.LeftArmHorizontal or HumanTetrisPose.LeftArmRaised => left.Tracked,
+                HumanTetrisPose.RightArmHorizontal or HumanTetrisPose.RightArmRaised => right.Tracked,
+                _ => left.Tracked && right.Tracked
+            };
+
+            // A cropped resting arm is common in a face-height webcam. Reject a
+            // tracked second arm in a raised or horizontal pose.
+            bool leftInactive = !left.Raised && !left.Horizontal;
+            bool rightInactive = !right.Raised && !right.Horizontal;
+            return requiredPose switch
+            {
+                HumanTetrisPose.BothArmsV => left.Raised && right.Raised && !left.Horizontal && !right.Horizontal,
+                HumanTetrisPose.BothArmsHorizontal => left.Horizontal && right.Horizontal,
+                HumanTetrisPose.LeftArmHorizontal => left.Horizontal && rightInactive,
+                HumanTetrisPose.RightArmHorizontal => right.Horizontal && leftInactive,
+                HumanTetrisPose.LeftArmRaised => left.Raised && !left.Horizontal && rightInactive,
+                HumanTetrisPose.RightArmRaised => right.Raised && !right.Horizontal && leftInactive,
                 _ => false
             };
-        }
 
-        private static bool IsArmDown(PoseLandmark[] lm, int shoulder, int elbow, int wrist,
-            float scale, float imageAspectCorrection, float upwardYSign, float minimumElbowVisibility,
-            float minimumVisibleWrist)
-        {
-            float elbowDown = (lm[shoulder].y - lm[elbow].y) * upwardYSign * imageAspectCorrection;
-            float elbowSide = Mathf.Abs(lm[elbow].x - lm[shoulder].x);
-            float elbowAngle = Mathf.Atan2(Mathf.Max(0f, elbowDown), Mathf.Max(elbowSide, 0.0001f)) * Mathf.Rad2Deg;
-            bool elbowShowsDown = lm[elbow].visibility >= minimumElbowVisibility &&
-                                  elbowDown > scale * 0.04f && elbowAngle >= 25f;
-
-            float wristDown = (lm[shoulder].y - lm[wrist].y) * upwardYSign * imageAspectCorrection;
-            float wristSide = Mathf.Abs(lm[wrist].x - lm[shoulder].x);
-            float wristAngle = Mathf.Atan2(Mathf.Max(0f, wristDown), Mathf.Max(wristSide, 0.0001f)) * Mathf.Rad2Deg;
-            bool wristShowsDown = lm[wrist].visibility >= minimumVisibleWrist &&
-                                  wristDown > scale * 0.12f && wristAngle >= 25f;
-            return elbowShowsDown || wristShowsDown;
+            (bool Raised, bool Horizontal, bool Tracked) ReadArm((int Shoulder, int Elbow, int Wrist) arm,
+                float outwardDirection)
+            {
+                bool elbowVisible = lm[arm.Elbow].visibility >= minimumElbowVisibility;
+                bool wristVisible = lm[arm.Wrist].visibility >= minimumWristVisibility;
+                bool allowInferred = requiredPose == HumanTetrisPose.BothArmsV;
+                bool raised = IsArmRaised(lm, arm.Shoulder, arm.Elbow, arm.Wrist, shoulderWidth,
+                    imageAspectCorrection, upwardYSign, raisedMinimumDegrees,
+                    elbowVisible || allowInferred, wristVisible || allowInferred);
+                bool horizontal = IsArmHorizontal(lm, arm.Shoulder, arm.Elbow, arm.Wrist,
+                    shoulderWidth, outwardDirection, elbowVisible, wristVisible,
+                    imageAspectCorrection, horizontalToleranceDegrees);
+                return (raised, horizontal, elbowVisible || wristVisible);
+            }
         }
 
         private static bool IsArmRaised(PoseLandmark[] lm, int shoulder, int elbow, int wrist,
-            float scale, float imageAspectCorrection, float upwardYSign, float minimumDegrees)
+            float scale, float imageAspectCorrection, float upwardYSign, float minimumDegrees,
+            bool useElbow, bool useWrist)
         {
-            // The Unity webcam-to-MediaPipe path can expose either top-to-bottom or
-            // bottom-to-top normalized Y coordinates. Use the body-derived direction
-            // instead of assuming one convention. Low-visibility off-screen joints can
-            // still provide useful inferred coordinates.
             float elbowUp = (lm[elbow].y - lm[shoulder].y) * upwardYSign * imageAspectCorrection;
             float elbowSide = Mathf.Abs(lm[elbow].x - lm[shoulder].x);
             float elbowAngle = Mathf.Atan2(Mathf.Max(0f, elbowUp), Mathf.Max(elbowSide, 0.0001f)) * Mathf.Rad2Deg;
@@ -299,8 +254,8 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
             float wristSide = Mathf.Abs(lm[wrist].x - lm[shoulder].x);
             float wristAngle = Mathf.Atan2(Mathf.Max(0f, wristUp), Mathf.Max(wristSide, 0.0001f)) * Mathf.Rad2Deg;
 
-            bool elbowShowsRaisedArm = elbowUp > scale * 0.025f && elbowAngle >= minimumDegrees;
-            bool wristEstimateShowsRaisedArm = wristUp > scale * 0.10f && wristAngle >= minimumDegrees;
+            bool elbowShowsRaisedArm = useElbow && elbowUp > scale * 0.025f && elbowAngle >= minimumDegrees;
+            bool wristEstimateShowsRaisedArm = useWrist && wristUp > scale * 0.10f && wristAngle >= minimumDegrees;
             return elbowShowsRaisedArm || wristEstimateShowsRaisedArm;
         }
 
@@ -320,8 +275,8 @@ namespace ActiveMotion3D.EndlessRunner.Obstacles
             if (Mathf.Abs(hipDirection) >= 0.015f)
                 return Mathf.Sign(hipDirection);
 
-            // This project's current webcam pipeline normally reports bottom-to-top Y.
-            return 1f;
+            // MediaPipe reads the upright camera frame with a top-left origin.
+            return -1f;
         }
 
         private static bool IsArmHorizontal(PoseLandmark[] lm, int shoulder, int elbow, int wrist,

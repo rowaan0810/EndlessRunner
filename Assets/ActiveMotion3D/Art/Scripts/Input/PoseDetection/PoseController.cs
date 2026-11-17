@@ -18,10 +18,18 @@ namespace ActiveMotion3D.EndlessRunner.Input.PoseDetection
         public const int NOSE = 0;
         public const int L_SHOULDER = 11;
         public const int R_SHOULDER = 12;
+        public const int L_ELBOW = 13;
+        public const int R_ELBOW = 14;
         public const int L_WRIST = 15;
         public const int R_WRIST = 16;
         public const int L_HIP = 23;
         public const int R_HIP = 24;
+
+        internal static bool LeftShoulderAppearsOnScreenLeft(PoseLandmark[] landmarks)
+        {
+            // The selfie preview flips X, so the larger camera X is screen-left.
+            return landmarks[L_SHOULDER].x >= landmarks[R_SHOULDER].x;
+        }
     }
 
     public struct PoseLandmark

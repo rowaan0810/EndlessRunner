@@ -11,6 +11,7 @@ namespace ActiveMotion3D.EndlessRunner.UI
 {
     internal sealed class StandCoachPanel : MonoBehaviour
     {
+        private const float FirstLineBudget = 5.5f;
         private RunResultsView view;
         private Text title, status, caption, captionToggle;
         private Button replay;
@@ -27,6 +28,7 @@ namespace ActiveMotion3D.EndlessRunner.UI
         private bool shown;
         private bool busy;
         private bool captions;
+        private bool captionOnly;
         private bool killerQueen;
 
         public void Initialize(RunResultsView results)
@@ -48,12 +50,12 @@ namespace ActiveMotion3D.EndlessRunner.UI
             UpdateCaption();
         }
 
-        public void Begin(string report, bool killerQueen)
+        public void Begin(RunFeedback.Report report, bool killerQueen)
         {
             ResetReport();
             this.killerQueen = killerQueen;
             title.text = killerQueen ? "Killer Queen" : "D4C";
-            status.text = "Preparing AI feedback…";
+            status.text = "Preparing feedback…";
             replay.interactable = false;
             cancellation = new CancellationTokenSource();
             busy = true;
@@ -67,41 +69,47 @@ namespace ActiveMotion3D.EndlessRunner.UI
             portrait = StandCoachPortrait.Create(view, selector, killerQueen);
         }
 
-        private IEnumerator Generate(string report, bool killerQueen, CancellationToken token)
+        private IEnumerator Generate(RunFeedback.Report report, bool killerQueen, CancellationToken token)
         {
-            yield return null;
+            float firstLineDeadline = Time.realtimeSinceStartup + FirstLineBudget;
             var runtime = StandCoachRuntime.Instance;
-            string error = StandCoachRuntime.MissingRuntime;
-            Task<StandCoachSpeech.Wave> synthesis = null;
-            if (runtime != null)
-                yield return runtime.Generate(report, killerQueen, token,
-                    sentence => synthesis = runtime.Speak(sentence, killerQueen, 0, token),
-                    result => lines = result, message => error = message);
-            if (lines == null)
+            if (runtime == null)
             {
-                status.text = error;
+                status.text = StandCoachRuntime.MissingRuntime;
                 busy = false;
                 yield break;
             }
 
-            synthesis ??= runtime.Speak(lines[0], killerQueen, 0, token);
+            Task<StandCoachSpeech.Wave> synthesis = runtime.BeginReport(report, killerQueen, out lines, out string adviceCue);
+            Task<string> tip = runtime.ChooseTip(report, token);
+            bool useVoice = synthesis != null;
             for (int i = 0; i < lines.Length; i++)
             {
-                yield return new WaitUntil(() => synthesis.IsCompleted);
-                if (synthesis.Status != TaskStatus.RanToCompletion)
+                float deadline = i == 0 ? firstLineDeadline : Time.realtimeSinceStartup + 12f;
+                while (useVoice && !synthesis.IsCompleted && Time.realtimeSinceStartup < deadline)
+                    yield return null;
+                AudioClip clip = null;
+                if (useVoice && synthesis.Status == TaskStatus.RanToCompletion)
+                    clip = CoachUi.Clip(synthesis.Result);
+                else if (useVoice)
                 {
                     if (synthesis.Exception != null) Debug.LogWarning(synthesis.Exception.GetBaseException().Message);
-                    status.text = "Voice playback is unavailable.";
-                    if (captions) caption.text = lines[i];
-                    RestoreMusic();
-                    busy = false;
-                    yield break;
+                    useVoice = !synthesis.IsFaulted && !synthesis.IsCanceled;
                 }
 
-                AudioClip clip = CoachUi.Clip(synthesis.Result);
                 clips.Add(clip);
-                if (i + 1 < lines.Length) synthesis = runtime.Speak(lines[i + 1], killerQueen, i + 1, token);
+                int next = i + 1;
+                if (next == lines.Length - 1 && tip.Status == TaskStatus.RanToCompletion)
+                    lines[next] = adviceCue + " " + tip.Result;
+                if (useVoice && next < lines.Length)
+                    synthesis = runtime.Speak(lines[next], killerQueen, next, token);
                 yield return new WaitUntil(() => shown);
+                if (clip != null)
+                {
+                    var sfx = ActiveMotion3D.EndlessRunner.Core.SfxPlayer.Instance;
+                    while (sfx != null && sfx.IsHitPlaying)
+                        yield return null;
+                }
                 yield return PlayLine(clip, lines[i], i);
             }
             FinishPlayback();
@@ -110,7 +118,16 @@ namespace ActiveMotion3D.EndlessRunner.UI
         private IEnumerator PlayLine(AudioClip clip, string line, int sentence)
         {
             currentLine = line;
+            captionOnly = clip == null;
             UpdateCaption();
+            if (captionOnly)
+            {
+                RestoreMusic();
+                status.text = "Stand Coach";
+                yield return new WaitForSecondsRealtime(Mathf.Clamp(line.Length / 19f, 1.6f, 5f));
+                yield break;
+            }
+
             status.text = "Speaking";
             voice.clip = clip;
             voice.pitch = StandCoachRuntime.SpeakingPitch(killerQueen, sentence);
@@ -122,7 +139,6 @@ namespace ActiveMotion3D.EndlessRunner.UI
             }
             voice.Play();
             yield return new WaitWhile(() => voice.isPlaying);
-            status.text = "Preparing AI feedback…";
         }
 
         private void Replay()
@@ -159,7 +175,7 @@ namespace ActiveMotion3D.EndlessRunner.UI
         private void UpdateCaption()
         {
             captionToggle.text = captions ? "Captions on" : "Captions off";
-            caption.text = captions ? currentLine : "";
+            caption.text = captions || captionOnly ? currentLine : "";
         }
 
         private void LateUpdate()
@@ -185,10 +201,12 @@ namespace ActiveMotion3D.EndlessRunner.UI
                 voice.Stop();
                 voice.clip = null;
             }
-            foreach (AudioClip clip in clips) Destroy(clip);
+            foreach (AudioClip clip in clips)
+                if (clip != null) Destroy(clip);
             clips.Clear();
             lines = null;
             currentLine = null;
+            captionOnly = false;
             if (caption != null) caption.text = "";
             shown = false;
             busy = false;
@@ -207,42 +225,6 @@ namespace ActiveMotion3D.EndlessRunner.UI
 
     internal static class CoachUi
     {
-        public static void Place(RectTransform rect, Transform parent, Vector2 position, Vector2 size)
-        {
-            rect.SetParent(parent, false);
-            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.anchoredPosition = position;
-            rect.sizeDelta = size;
-        }
-
-        public static Text Label(Transform parent, string label, int fontSize, Vector2 position, Vector2 size)
-        {
-            var element = new GameObject(label.Length > 0 ? label : "Coach text", typeof(RectTransform), typeof(Text));
-            Place((RectTransform)element.transform, parent, position, size);
-            var text = element.GetComponent<Text>();
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            text.text = label;
-            text.fontSize = fontSize;
-            text.alignment = TextAnchor.MiddleCenter;
-            text.color = new Color(0.86f, 0.90f, 1f);
-            text.raycastTarget = false;
-            text.supportRichText = false;
-            return text;
-        }
-
-        public static Button Button(Transform parent, string label, Vector2 position, Vector2 size, out Text text)
-        {
-            var element = new GameObject(label, typeof(RectTransform), typeof(Image), typeof(Button));
-            Place((RectTransform)element.transform, parent, position, size);
-            var image = element.GetComponent<Image>();
-            image.color = new Color(0.20f, 0.25f, 0.38f);
-            var button = element.GetComponent<Button>();
-            button.targetGraphic = image;
-            text = Label(element.transform, label, 14, Vector2.zero, size);
-            text.gameObject.name = "Label";
-            return button;
-        }
-
         public static AudioClip Clip(StandCoachSpeech.Wave wave)
         {
             AudioClip clip = AudioClip.Create("Stand Coach", wave.Samples.Length, 1, wave.SampleRate, false);

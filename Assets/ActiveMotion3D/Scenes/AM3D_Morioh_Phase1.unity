@@ -4354,7 +4354,6 @@ MonoBehaviour:
   punchTargetHeight: 2.8
   punchTargetHitDistance: 10
   punchTargetMinimumReactionSeconds: 0.85
-  invertPunchVerticalDirection: 1
   laneWidth: 3.2
   barrierLowHeight: 0.6
   barrierHighY: 1.5
@@ -9467,7 +9466,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: b68d5338e471dc14da1aed57f91a3bb9, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.21588743
+      value: 0.13911257
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: b68d5338e471dc14da1aed57f91a3bb9, type: 3}
       propertyPath: m_LocalPosition.z
@@ -14465,28 +14464,28 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ActiveMotion3D.EndlessRunner.UI.PauseMenu
   canvas: {fileID: 0}
   font: {fileID: 0}
+  titleFont: {fileID: 12800000, guid: c1b78293e4e219c44b32db6019fb334b, type: 3}
   pauseKey: 27
   mainMenuScene: AM3D_MainMenu
   pauseLabel: PAUSE
-  title: PAUSED
-  resumeLabel: RESUME
-  restartLabel: RESTART
-  menuLabel: MAIN MENU
-  quitLabel: QUIT
+  title: Paused
+  resumeLabel: Resume
+  restartLabel: Restart
+  menuLabel: Main menu
+  quitLabel: Quit
   pauseButtonPosition: {x: -25, y: -92}
   pauseButtonPivot: {x: 1, y: 1}
   pauseButtonSize: {x: 150, y: 44}
-  cardSize: {x: 420, y: 440}
-  actionButtonSize: {x: 320, y: 56}
-  titleYOffset: 155
-  titleHeight: 60
-  titleSidePadding: 24
-  firstActionYOffset: 70
-  actionSpacing: 68
-  titleFontSize: 36
+  cardSize: {x: 590, y: 544}
+  actionButtonSize: {x: 496, y: 68}
+  titleYOffset: 184
+  titleHeight: 90
+  firstActionYOffset: 73
+  actionSpacing: 82
+  titleFontSize: 68
   buttonFontSize: 22
-  overlayColor: {r: 0.01, g: 0.01, b: 0.03, a: 0.84}
-  cardColor: {r: 0.07, g: 0.07, b: 0.14, a: 0.98}
+  overlayColor: {r: 0.047058824, g: 0.03529412, b: 0.078431375, a: 0.5}
+  cardColor: {r: 0.08627451, g: 0.07450981, b: 0.12156863, a: 0.9607843}
   buttonColor: {r: 0.12, g: 0.12, b: 0.21, a: 1}
   accentColor: {r: 0, g: 0.95, b: 1, a: 1}
 --- !u!1 &1992470766
@@ -14554,7 +14553,6 @@ MonoBehaviour:
   bodyVerticalResetThreshold: 0.025
   bodyVerticalResponsiveness: 0.98
   bodyConfirmationFrames: 2
-  invertBodyVerticalDirection: 1
   suppressJumpWhenHumanTetrisArmPose: 1
   bothArmsRaisedMargin: 0.06
   bothArmsHorizontalTolerance: 0.12

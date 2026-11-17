@@ -24,6 +24,8 @@ namespace ActiveMotion3D.EndlessRunner.Player
         private int currentIndex = 0;
         private Animator animator;
 
+        internal int CurrentIndex => currentIndex;
+
         internal GameObject CurrentModel => models != null && currentIndex >= 0 && currentIndex < models.Length
             ? models[currentIndex] : null;
 

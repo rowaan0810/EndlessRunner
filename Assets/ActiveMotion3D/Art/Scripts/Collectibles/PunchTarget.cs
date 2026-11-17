@@ -172,12 +172,6 @@ namespace ActiveMotion3D.EndlessRunner.Collectibles
         private static bool rightArmed;
         private static bool leftRaiseEvent;
         private static bool rightRaiseEvent;
-        private static bool invertVerticalDirection = true;
-
-        public static void SetInvertVerticalDirection(bool invert)
-        {
-            invertVerticalDirection = invert;
-        }
 
         public static void UpdateState()
         {
@@ -244,21 +238,25 @@ namespace ActiveMotion3D.EndlessRunner.Collectibles
             PoseLandmark[] landmarks = manager != null ? manager.CurrentLandmarks : null;
             if (landmarks == null || landmarks.Length < 33 || !manager.PersonDetected) return false;
 
-            // The webcam pipeline is mirrored relative to the user's perceived
-            // left/right. Swap MediaPipe labels so the user's left hand hits the
-            // left box and the user's right hand hits the right box.
-            bool useMediaPipeLeft = side == PunchTargetSide.Right;
+            bool useMediaPipeLeft = (side == PunchTargetSide.Left) == LM.LeftShoulderAppearsOnScreenLeft(landmarks);
             int shoulderIndex = useMediaPipeLeft ? LM.L_SHOULDER : LM.R_SHOULDER;
             int wristIndex = useMediaPipeLeft ? LM.L_WRIST : LM.R_WRIST;
             PoseLandmark shoulder = landmarks[shoulderIndex];
             PoseLandmark wrist = landmarks[wristIndex];
             if (shoulder.visibility < MinimumVisibility) return false;
 
-            // Shoulder height is the exact boundary. This webcam feed uses the
-            // vertically inverted direction already required by PoseInput.
+            // In the upright camera frame, points above the shoulder have smaller Y.
             bool poseWristRaised = wrist.visibility >= MinimumVisibility &&
                                    IsAboveShoulder(wrist.y, shoulder.y);
             if (poseWristRaised) return true;
+
+            // A raised elbow can still register a punch when the wrist leaves the frame.
+            if (wrist.visibility < MinimumVisibility)
+            {
+                PoseLandmark elbow = landmarks[useMediaPipeLeft ? LM.L_ELBOW : LM.R_ELBOW];
+                if (elbow.visibility >= MinimumVisibility && IsAboveShoulder(elbow.y, shoulder.y))
+                    return true;
+            }
 
             // Hand Landmarker can remain stable when Pose Landmarker briefly loses
             // a wrist. Assign each detected hand to whichever pose wrist it is
@@ -295,7 +293,7 @@ namespace ActiveMotion3D.EndlessRunner.Collectibles
 
         private static bool IsAboveShoulder(float handY, float shoulderY)
         {
-            return invertVerticalDirection ? handY > shoulderY : handY < shoulderY;
+            return handY < shoulderY;
         }
     }
 
