@@ -1,5 +1,8 @@
 # ActiveMotion3D game roadmap
 
+This is the original integration roadmap. For the current scenes, demo scope,
+and November 20 delivery checks, see the [release checklist](Docs/Release-2026-11-20.md).
+
 The game uses only `Assets/ActiveMotion3D/Scenes/AM3D_MainMenu.unity` and
 `Assets/ActiveMotion3D/Scenes/AM3D_ActiveMotionBase.unity`. Character abilities
 (shield, magnet, 2× score, smash) are out of scope. The original runner and

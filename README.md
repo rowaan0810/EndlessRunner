@@ -16,21 +16,26 @@ The build starts in `AM3D_MainMenu`, which loads [AM3D_Morioh_Full.unity](Assets
 | Action | Keyboard | Webcam |
 | --- | --- | --- |
 | Change lanes | A / D or Left / Right | Lean left or right |
-| Jump | W, Up, or Space | Jump |
-| Duck | S or Down | Crouch |
+| Jump | W, Up, or Space | Point your index finger up or jump |
+| Duck | S or Down | Point your index finger down or crouch |
+| Pause | Esc | Show both open palms at the same time |
+| Resume | Esc | Make a V sign with either hand on the pause screen |
+| Quit | Select **Quit** on the pause screen | Hold a thumbs-down sign with either hand for about ¾ second during a run or while paused |
 
-- Raise the matching arm when a punch target lights up to earn a coin. Match the pose shown on an approaching Human Tetris wall to pass through.
+- When a punch target lights up, raise the matching arm or press **Q** for left and **E** for right to earn a coin. For Human Tetris walls, hold the displayed pose or number key until you pass through.
 - Change lanes to dodge Menacing Road Signs. Jump over Sheer Heart Attack or move out of its lane before it reaches you.
 - Press **Esc** or select **Pause** to open the pause menu. From there you can resume, restart, return to the main menu, or quit.
 - The results screen shows your score, distance, coins, and time. Select **Play Again** to retry or **Main Menu** to change characters or controls.
+
+In the main menu's **Settings** or the Morioh pause menu, set **Run speed** to **Auto** for a pace that increases during the run, or choose a fixed speed from 5 to 50 m/s. The game remembers your selection.
 
 ## Stand Coach on Windows
 
 From the project root, run `.\Tools\Setup-StandCoach.ps1` in PowerShell before entering Play Mode or making a Windows x64 build with Stand Coach. The first setup downloads the language model and voices into `StandCoachRuntime/`. Unity copies that folder into Windows x64 builds automatically. Share the whole build folder so the executable can find its `_Data` folder and the bundled runtime.
 
-On the main menu, click the voice name to switch between the two voices for the selected Stand, and click **Preview voice** to hear it. After a crash, your Stand speaks an AI-generated run assessment, cause of the crash, and next-run tip. The results card has **Replay feedback** and an optional captions toggle. The game runs both the language and speech models locally.
+After a crash, your Stand gives four lines of feedback: a rotating opening, the run result, the cause of the crash, and a practice tip. The local language model picks a tip based on the run. The results card has **Replay feedback** and a captions toggle. If the opening audio takes more than 5.5 seconds, the first line appears as a caption.
 
-Choose between **Onyx** (default) and **Fenrir** for D4C, or **George** (default) and **Fable** for Killer Queen. See [Stand Coach third-party notices](Tools/StandCoach-ThirdParty.txt) for the bundled components.
+D4C speaks with **Onyx** and Killer Queen speaks with **George**. See [Stand Coach third-party notices](Tools/StandCoach-ThirdParty.txt) for the bundled components.
 
 ### Edit the game-over screen in Unity
 
@@ -44,4 +49,6 @@ Choose between **Onyx** (default) and **Fenrir** for D4C, or **George** (default
 - [Gameplay scripts](Assets/ActiveMotion3D/Art/Scripts)
 - [Morioh background notes](Docs/MoriohDesign/HYBRID_BACKGROUND.md) for the painted sky, drifting clouds, and town skyline.
 - [Menacing Road Signs](Docs/MenacingRoadSigns/README.md) for obstacle variants, tuning, and targeted Editor checks.
-- [Steel Ball Run Morioh showcase](deck_output/Steel-Ball-Run-Morioh-Showcase.pptx)
+- [November 20 demo release checklist](Docs/Release-2026-11-20.md)
+- [Browser showcase](deck_output/Steel-Ball-Run-Showcase.html) and [speaker guide](deck_output/Steel-Ball-Run-Speaker-Guide.md). Download the HTML file and open it in a browser.
+- [Steel Ball Run Morioh showcase PowerPoint](deck_output/Steel-Ball-Run-Morioh-Showcase.pptx)

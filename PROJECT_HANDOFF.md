@@ -1,5 +1,8 @@
 # Endless Runner — Project Handoff
 
+> For the current Morioh build and November 20 delivery, use the
+> [release checklist](Docs/Release-2026-11-20.md). This handoff records the earlier integration.
+
 ## Active scene decision — 2026-11-05
 
 The owner selected `Assets/ActiveMotion3D/Scenes/AM3D_MainMenu.unity` and
